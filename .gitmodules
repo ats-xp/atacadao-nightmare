@@ -1,0 +1,18 @@
+[submodule "vendor/fontstash"]
+	path = vendor/fontstash
+	url = https://github.com/memononen/fontstash.git
+[submodule "vendor/sokol"]
+	path = vendor/sokol
+	url = https://github.com/floooh/sokol.git
+[submodule "vendor/base"]
+	path = vendor/base
+	url = https://github.com/TomasBorquez/base.h.git
+[submodule "vendor/glm"]
+	path = vendor/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "vendor/stb"]
+	path = vendor/stb
+	url = https://github.com/nothings/stb.git
+[submodule "vendor/sokol-tools-bin"]
+	path = vendor/sokol-tools-bin
+	url = https://github.com/floooh/sokol-tools-bin.git
