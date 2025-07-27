@@ -45,6 +45,7 @@ dependencies = [
   dependency('xi'),
   dependency('xcursor'),
   dependency('gl'),
+  dependency('assimp'),
   cc.find_library('glm', dirs : glm_lib_dir),
 ]
 
@@ -60,6 +61,7 @@ inc += include_directories('vendor/sokol/util')
 inc += include_directories('vendor/fontstash/src')
 inc += include_directories('vendor/base')
 inc += include_directories('vendor/glm/glm/')
+inc += include_directories('vendor/stb')
 
 exe = executable(
   'atacadao',

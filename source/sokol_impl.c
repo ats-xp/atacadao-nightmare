@@ -15,6 +15,7 @@
 #include "sokol_time.h"
 
 #include "sokol_shape.h"
+#include "sokol_memtrack.h"
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop

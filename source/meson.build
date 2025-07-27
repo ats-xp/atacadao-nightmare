@@ -4,6 +4,11 @@ src_dir = files(
   'menu.cpp',
   'game.cpp',
   'shape.cpp',
+  'player.cpp',
+  'camera.cpp',
+  'model.cpp',
+  'render.cpp',
   'sokol_impl.c',
   'base_impl.c',
+  'stb_impl.c',
   )

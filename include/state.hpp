@@ -6,6 +6,8 @@
 
 #include "input.hpp"
 
+#include "sokol_app.h"
+
 enum StateId : u8 {
   OFF = 0,
   MENU,
@@ -15,9 +17,9 @@ enum StateId : u8 {
 
 class StateInterface {
 public:
-  virtual void update() = 0;
+  virtual void update(f32 dt, Input &inp) = 0;
   virtual void render() = 0;
-  virtual void handleInput(Input &inp) = 0;
+  virtual void handleEvent(const sapp_event *e) = 0;
 };
 
 class State : public StateInterface {
@@ -30,9 +32,9 @@ public:
 
   virtual ~State() { LogInfo("State deleted"); }
 
-  void update() override {}
+  void update(f32 dt, Input &inp) override {}
   void render() override {}
-  void handleInput(Input &inp) override {};
+  void handleEvent(const sapp_event *e) override {};
 
   inline void setNext(u8 n) { m_next = n; };
 

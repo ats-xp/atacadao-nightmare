@@ -3,11 +3,15 @@
 #include <string>
 #include <vector>
 
-#include "base.h"
-// #include "gl.hpp"
 #include <glm.hpp>
 
+#include "base.h"
+#include "sokol_gfx.h"
+
+#include "camera.hpp"
+
 class Shader;
+class RenderBuffer;
 
 enum TextureType : u8 {
   DIFFUSE = 0,
@@ -19,74 +23,48 @@ enum TextureType : u8 {
 struct Vertex {
   glm::vec3 pos;
   glm::vec4 color;
-  // glm::vec3 normal;
-  // glm::vec2 tex_coords;
+  glm::vec3 normal;
+  glm::vec2 tex_coords;
 };
-
-// extern std::vector<Vertex> vtx_cube;
-// extern std::vector<u32> ind_cube;
 
 struct Texture {
   u32 id;
+  sg_sampler smp;
   TextureType type;
   std::string path;
 };
 
 class Mesh {
-public:
-  std::vector<Vertex> vertices;
-  std::vector<u16> indices;
-  // std::vector<Texture> textures;
+  std::vector<Vertex> m_vertices;
+  std::vector<u16> m_indices;
+  std::vector<Texture> m_textures;
 
-  // u32 VAO, VBO, EBO;
+  sg_pipeline m_pipe;
+  sg_shader m_shader;
   sg_bindings m_bind;
 
-  Mesh(std::vector<Vertex> v, std::vector<u16> i);
-  // Mesh(std::vector<Vertex> v, std::vector<u32> i, std::vector<Texture> t);
+  glm::vec3 m_pos;
+  glm::vec3 m_scale;
+  glm::vec3 m_rotation;
+
+  glm::mat4 m_model;
+
+  // tmp??
+  RenderBuffer *m_buf;
+  bool m_trash;
+
+public:
+  Mesh(std::vector<Vertex> v, std::vector<u16> i, std::vector<Texture> t);
   ~Mesh();
 
-  void draw();
+  void begin();
+  void end();
+  void draw(Camera &cam);
+  void destroy();
 
-  static Mesh *createCube() {
-    std::vector<Vertex> vtx = {
-        Vertex({-1.0, -1.0, -1.0}, {1.0, 0.0, 0.0, 1.0}),
-        Vertex({1.0, -1.0, -1.0}, {1.0, 0.0, 0.0, 1.0}),
-        Vertex({1.0, 1.0, -1.0}, {1.0, 0.0, 0.0, 1.0}),
-        Vertex({-1.0, 1.0, -1.0}, {1.0, 0.0, 0.0, 1.0}),
+  inline void setPos(glm::vec3 pos) { m_pos = pos; }
+  inline void setScale(glm::vec3 scale) { m_scale = scale; }
 
-        Vertex({-1.0, -1.0, 1.0}, {0.0, 1.0, 0.0, 1.0}),
-        Vertex({1.0, -1.0, 1.0}, {0.0, 1.0, 0.0, 1.0}),
-        Vertex({1.0, 1.0, 1.0}, {0.0, 1.0, 0.0, 1.0}),
-        Vertex({-1.0, 1.0, 1.0}, {0.0, 1.0, 0.0, 1.0}),
-
-        Vertex({-1.0, -1.0, -1.0}, {0.0, 0.0, 1.0, 1.0}),
-        Vertex({-1.0, 1.0, -1.0}, {0.0, 0.0, 1.0, 1.0}),
-        Vertex({-1.0, 1.0, 1.0}, {0.0, 0.0, 1.0, 1.0}),
-        Vertex({-1.0, -1.0, 1.0}, {0.0, 0.0, 1.0, 1.0}),
-
-        Vertex({1.0, -1.0, -1.0}, {1.0, 0.5, 0.0, 1.0}),
-        Vertex({1.0, 1.0, -1.0}, {1.0, 0.5, 0.0, 1.0}),
-        Vertex({1.0, 1.0, 1.0}, {1.0, 0.5, 0.0, 1.0}),
-        Vertex({1.0, -1.0, 1.0}, {1.0, 0.5, 0.0, 1.0}),
-
-        Vertex({-1.0, -1.0, -1.0}, {0.0, 0.5, 1.0, 1.0}),
-        Vertex({-1.0, -1.0, 1.0}, {0.0, 0.5, 1.0, 1.0}),
-        Vertex({1.0, -1.0, 1.0}, {0.0, 0.5, 1.0, 1.0}),
-        Vertex({1.0, -1.0, -1.0}, {0.0, 0.5, 1.0, 1.0}),
-
-        Vertex({-1.0, 1.0, -1.0}, {1.0, 0.0, 0.5, 1.0}),
-        Vertex({-1.0, 1.0, 1.0}, {1.0, 0.0, 0.5, 1.0}),
-        Vertex({1.0, 1.0, 1.0}, {1.0, 0.0, 0.5, 1.0}),
-        Vertex({1.0, 1.0, -1.0}, {1.0, 0.0, 0.5, 1.0}),
-    };
-
-    std::vector<u16> ind = {0, 1, 3, 3, 1, 2, 1, 5, 2, 2, 5, 6,
-                            5, 4, 6, 6, 4, 7, 4, 0, 7, 7, 0, 3,
-                            3, 2, 7, 7, 2, 6, 4, 5, 0, 0, 5, 1};
-
-    return new Mesh(vtx, ind);
-  }
-
-private:
-  void setupMesh();
+  // TODO
+  // inline void setRotationX(glm::vec3 rot) { m_rotation = rot; }
 };

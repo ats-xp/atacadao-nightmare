@@ -8,6 +8,8 @@
 
 #include "base.h"
 
+#include "camera.hpp"
+
 //
 // MAYBE:
 // separar os formatos por classes
@@ -25,9 +27,9 @@ class Shape : public ShapeInterface {
 
   glm::mat4 m_model;
 
-  f32 m_rot {0.0f};
-
 public:
+  glm::vec3 m_pos;
+
   Shape(glm::vec3 pos = glm::vec3(0.0f));
   ~Shape();
 
@@ -41,9 +43,11 @@ public:
     return sshape_build_box(&buf, &b);
   };
 
-  void draw(glm::mat4 pv);
+  void draw(Camera &cam);
 
   inline void rotate(f32 degrees, glm::vec3 axis) {
     m_model = glm::rotate(m_model, glm::radians(degrees), axis);
   }
+
+  inline void setPos(glm::vec3 pos) { m_pos = pos; }
 };

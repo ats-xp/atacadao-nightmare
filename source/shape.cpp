@@ -4,9 +4,7 @@
 
 #include "base.h"
 
-Shape::Shape(glm::vec3 pos) {
-  m_model = glm::mat4(1.0f);
-
+Shape::Shape(glm::vec3 pos) : m_pos(pos) {
   f32 vertices[1024];
   u16 indices[1024];
 
@@ -42,23 +40,24 @@ Shape::Shape(glm::vec3 pos) {
 }
 
 Shape::~Shape() {
-  // sg_destroy_buffer(m_bind.index_buffer);
-  // sg_destroy_buffer(m_bind.vertex_buffers[0]);
+  sg_destroy_buffer(m_bind.index_buffer);
+  sg_destroy_buffer(m_bind.vertex_buffers[0]);
 
-  // sg_destroy_shader(m_shader);
-  // sg_destroy_pipeline(m_pipe);
+  sg_destroy_shader(m_shader);
+  sg_destroy_pipeline(m_pipe);
 }
 
-void Shape::draw(glm::mat4 pv) {
+void Shape::draw(Camera &cam) {
   sg_apply_pipeline(m_pipe);
   sg_apply_bindings(&m_bind);
 
   m_model = glm::mat4(1.0f);
-  m_model = glm::translate(m_model, glm::vec3(0.0f, 0.0f, 0.0f));
-  rotate(m_rot += 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));
+  m_model = glm::translate(m_model, m_pos);
+  m_model =
+      glm::rotate(m_model, glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
   vs_params_shape_t vs_params = {};
-  vs_params.mvp = pv * m_model;
+  vs_params.mvp = cam.getMatrix() * m_model;
   sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
 
   sg_draw(m_elm.base_element, m_elm.num_elements, 1);

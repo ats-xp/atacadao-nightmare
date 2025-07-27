@@ -8,7 +8,9 @@
 #include "sokol_gfx.h"
 #include "sokol_glue.h"
 #include "sokol_log.h"
+#include "sokol_memtrack.h"
 #include "sokol_shape.h"
+#include "sokol_time.h"
 
 #include "fontstash.h"
 #include "sokol_fontstash.h"
@@ -16,8 +18,10 @@
 
 #include "base.h"
 
+#include "camera.hpp"
 #include "game.hpp"
 #include "menu.hpp"
+#include "player.hpp"
 #include "shape.hpp"
 
 static struct {
@@ -29,25 +33,39 @@ static struct {
   std::unique_ptr<State> st;
 
   Input input;
-} state;
 
-std::shared_ptr<Shape> cube;
+  u64 last_time;
+  f64 delta_time;
+} state;
 
 static void init() {
   sg_desc desc = {};
   desc.environment = sglue_environment();
   desc.logger.func = slog_func;
-  sg_setup(&desc);
+  desc.allocator.alloc_fn = smemtrack_alloc,
+  desc.allocator.free_fn = smemtrack_free, sg_setup(&desc);
 
   sgl_desc_t sgl_desc = {};
   sgl_desc.logger.func = slog_func;
   sgl_setup(&sgl_desc);
 
+  sfetch_desc_t fdesc = {};
+  fdesc.max_requests = 1;
+  fdesc.num_channels = 1;
+  fdesc.num_lanes = 1;
+  sfetch_setup(&fdesc);
+
+  stm_setup();
+
+  state.last_time = 0;
+
   state.st = std::make_unique<Menu>();
-  cube = std::make_shared<Shape>();
+  sapp_lock_mouse(true);
 }
 
 static void frame() {
+  state.delta_time = stm_ms(stm_laptime(&state.last_time));
+
   u8 next_st = state.st->getNext();
   if (StateId::OFF != next_st) {
     state.st.reset();
@@ -62,7 +80,7 @@ static void frame() {
     }
   }
 
-  state.st->handleInput(state.input);
+  state.st->update(static_cast<float>(state.delta_time), state.input);
 
   sg_pass_action action = {};
   action.colors[0].load_action = SG_LOADACTION_CLEAR;
@@ -72,22 +90,18 @@ static void frame() {
   pass.action = action;
   pass.swapchain = sglue_swapchain();
 
-  glm::mat4 proj = glm::perspective(
-      glm::radians(45.0f), sapp_widthf() / sapp_heightf(), 0.1f, 100.0f);
-  glm::mat4 view =
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 6.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                  glm::vec3(0.0f, 1.0f, 0.0f));
-
   sg_begin_pass(&pass);
 
-  cube->draw(proj * view);
+  state.st->render();
 
   sg_end_pass();
   sg_commit();
 }
 
 static void handleInput(const sapp_event *e) {
-  auto &inp = state.input;
+  Input &inp = state.input;
+
+  state.st->handleEvent(e);
 
   if (e->type == SAPP_EVENTTYPE_KEY_DOWN || e->type == SAPP_EVENTTYPE_KEY_UP) {
     bool btn_down = e->type == SAPP_EVENTTYPE_KEY_DOWN;
@@ -95,8 +109,15 @@ static void handleInput(const sapp_event *e) {
     if (e->key_code == SAPP_KEYCODE_Z)
       inp.action = btn_down;
 
-    if (e->key_code == SAPP_KEYCODE_UP)
+    if (e->key_code == SAPP_KEYCODE_W)
       inp.up = btn_down;
+    else if (e->key_code == SAPP_KEYCODE_S)
+      inp.down = btn_down;
+
+    if (e->key_code == SAPP_KEYCODE_A)
+      inp.left = btn_down;
+    else if (e->key_code == SAPP_KEYCODE_D)
+      inp.right = btn_down;
 
     if (e->key_repeat)
       return;
@@ -104,6 +125,8 @@ static void handleInput(const sapp_event *e) {
 }
 
 static void cleanup() {
+  state.st.reset();
+
   sgl_shutdown();
   sg_shutdown();
 }
@@ -122,7 +145,7 @@ sapp_desc sokol_main(int argc, char **argv) {
   desc.window_title = "Atacado - Nightmare";
   desc.icon.sokol_default = true;
   desc.logger.func = slog_func;
-  desc.sample_count = 4;
+  desc.sample_count = 2;
   desc.gl_major_version = 3;
   desc.gl_minor_version = 3;
 
