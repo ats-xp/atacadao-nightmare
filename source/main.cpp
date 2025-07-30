@@ -36,12 +36,17 @@ static struct {
 
   u64 last_time;
   f64 delta_time;
+  f64 frame_accum;
+  int frame_count;
+  int fps;
 } state;
 
 static void init() {
   sg_desc desc = {};
   desc.environment = sglue_environment();
   desc.logger.func = slog_func;
+  desc.buffer_pool_size = 256;
+  desc.sampler_pool_size = 128;
   desc.allocator.alloc_fn = smemtrack_alloc,
   desc.allocator.free_fn = smemtrack_free, sg_setup(&desc);
 
@@ -57,14 +62,23 @@ static void init() {
 
   stm_setup();
 
-  state.last_time = 0;
+  state.last_time = stm_now();
 
-  state.st = std::make_unique<Menu>();
+  state.st = std::make_unique<Game>();
   sapp_lock_mouse(true);
 }
 
 static void frame() {
-  state.delta_time = stm_ms(stm_laptime(&state.last_time));
+  u64 now = stm_now();
+  state.delta_time = stm_sec(stm_diff(now, state.last_time));
+  state.last_time = now;
+
+  state.frame_accum += state.delta_time;
+  state.frame_count++;
+
+  char title[30];
+  sprintf(title, "Project AN FPS: %d", state.fps);
+  sapp_set_window_title(title);
 
   u8 next_st = state.st->getNext();
   if (StateId::OFF != next_st) {
@@ -96,6 +110,12 @@ static void frame() {
 
   sg_end_pass();
   sg_commit();
+
+  if (state.frame_accum >= 1.0f) {
+    state.fps = state.frame_count;
+    state.frame_count = 0;
+    state.frame_accum = 0.0f;
+  }
 }
 
 static void handleInput(const sapp_event *e) {
@@ -121,12 +141,16 @@ static void handleInput(const sapp_event *e) {
 
     if (e->key_repeat)
       return;
+
+    if (e->key_code == SAPP_KEYCODE_ESCAPE)
+      sapp_request_quit();
   }
 }
 
 static void cleanup() {
   state.st.reset();
 
+  sfetch_shutdown();
   sgl_shutdown();
   sg_shutdown();
 }
@@ -148,6 +172,9 @@ sapp_desc sokol_main(int argc, char **argv) {
   desc.sample_count = 2;
   desc.gl_major_version = 3;
   desc.gl_minor_version = 3;
+
+  desc.swap_interval = 1;
+  desc.high_dpi = true;
 
   return desc;
 }

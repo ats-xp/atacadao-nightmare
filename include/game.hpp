@@ -2,7 +2,8 @@
 
 #include "state.hpp"
 
-#include "sokol_memtrack.h"
+// #include "sokol_memtrack.h"
+#include "base.h"
 
 #include "camera.hpp"
 #include "player.hpp"
@@ -10,14 +11,13 @@
 #include "render.hpp"
 
 class Game : public State {
-  std::shared_ptr<Camera> m_cam;
-  std::shared_ptr<Player> m_player;
-
-  std::vector<std::shared_ptr<Model>> mdls;
-
   Render m_render;
 
-  smemtrack_info_t m_info;
+  std::vector<Model*> mdls;
+  f32 rot = 0.0f;
+
+  std::shared_ptr<Camera> m_cam;
+  std::shared_ptr<Player> m_player;
 
   f32 m_mouse_x = 0;
   f32 m_mouse_y = 0;

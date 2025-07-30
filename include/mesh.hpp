@@ -11,7 +11,7 @@
 #include "camera.hpp"
 
 class Shader;
-class RenderBuffer;
+struct RenderBuffer;
 
 enum TextureType : u8 {
   DIFFUSE = 0,
@@ -20,51 +20,49 @@ enum TextureType : u8 {
   HEIGHT,
 };
 
+struct Transform {
+  glm::vec3 position;
+  glm::vec3 scale;
+  glm::vec3 rotation;
+};
+
 struct Vertex {
-  glm::vec3 pos;
   glm::vec4 color;
+  glm::vec3 pos;
   glm::vec3 normal;
   glm::vec2 tex_coords;
 };
 
 struct Texture {
+  std::string path;
   u32 id;
   sg_sampler smp;
   TextureType type;
-  std::string path;
+
+  bool loaded;
+
+  void load(const char *filename, TextureType tex_type);
+  void destroy();
 };
 
 class Mesh {
+  public:
   std::vector<Vertex> m_vertices;
   std::vector<u16> m_indices;
   std::vector<Texture> m_textures;
 
-  sg_pipeline m_pipe;
-  sg_shader m_shader;
-  sg_bindings m_bind;
+  sg_buffer m_vbo;
+  sg_buffer m_ebo;
 
-  glm::vec3 m_pos;
-  glm::vec3 m_scale;
-  glm::vec3 m_rotation;
+  Mesh(std::vector<Vertex> vertices, std::vector<u16> indices, std::vector<Texture> textures);
+  Mesh(const Mesh &other);
+  Mesh &operator=(const Mesh &other);
 
-  glm::mat4 m_model;
+  Mesh(Mesh &&other) noexcept;
+  Mesh &operator=(Mesh &&other) noexcept;
 
-  // tmp??
-  RenderBuffer *m_buf;
-  bool m_trash;
-
-public:
-  Mesh(std::vector<Vertex> v, std::vector<u16> i, std::vector<Texture> t);
   ~Mesh();
 
-  void begin();
-  void end();
-  void draw(Camera &cam);
+  void draw();
   void destroy();
-
-  inline void setPos(glm::vec3 pos) { m_pos = pos; }
-  inline void setScale(glm::vec3 scale) { m_scale = scale; }
-
-  // TODO
-  // inline void setRotationX(glm::vec3 rot) { m_rotation = rot; }
 };

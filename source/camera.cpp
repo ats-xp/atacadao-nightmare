@@ -18,6 +18,84 @@ Camera::Camera(glm::vec3 pos) : m_pos(pos) {
   updateVectors();
 }
 
+Camera::Camera(Camera &other) {
+  m_pos = other.m_pos;
+  m_front = other.m_front;
+  m_up = other.m_up;
+  m_world_up = other.m_world_up;
+
+  m_win_w = other.m_win_w;
+  m_win_h = other.m_win_h;
+
+  m_fov = other.m_fov;
+  m_near = other.m_near;
+  m_far = other.m_far;
+
+  m_yaw = other.m_yaw;
+  m_pitch = other.m_pitch;
+
+  m_sensivity = other.m_sensivity;
+}
+
+Camera &Camera::operator=(Camera &other) {
+  m_pos = other.m_pos;
+  m_front = other.m_front;
+  m_up = other.m_up;
+  m_world_up = other.m_world_up;
+
+  m_win_w = other.m_win_w;
+  m_win_h = other.m_win_h;
+
+  m_fov = other.m_fov;
+  m_near = other.m_near;
+  m_far = other.m_far;
+
+  m_yaw = other.m_yaw;
+  m_pitch = other.m_pitch;
+
+  m_sensivity = other.m_sensivity;
+  return *this;
+}
+
+Camera::Camera(const Camera &&other) {
+  m_pos = other.m_pos;
+  m_front = other.m_front;
+  m_up = other.m_up;
+  m_world_up = other.m_world_up;
+
+  m_win_w = other.m_win_w;
+  m_win_h = other.m_win_h;
+
+  m_fov = other.m_fov;
+  m_near = other.m_near;
+  m_far = other.m_far;
+
+  m_yaw = other.m_yaw;
+  m_pitch = other.m_pitch;
+
+  m_sensivity = other.m_sensivity;
+}
+
+Camera &Camera::operator=(const Camera &&other) {
+  m_pos = other.m_pos;
+  m_front = other.m_front;
+  m_up = other.m_up;
+  m_world_up = other.m_world_up;
+
+  m_win_w = other.m_win_w;
+  m_win_h = other.m_win_h;
+
+  m_fov = other.m_fov;
+  m_near = other.m_near;
+  m_far = other.m_far;
+
+  m_yaw = other.m_yaw;
+  m_pitch = other.m_pitch;
+
+  m_sensivity = other.m_sensivity;
+  return *this;
+}
+
 void Camera::updateVectors() {
   m_front.x = cos(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
   m_front.y = sin(glm::radians(m_pitch));

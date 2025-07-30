@@ -1,13 +1,55 @@
+/*
+ *
+ * TODO Otimizar a 'load texture'
+ * TODO Terminar e melhorar a 'store' de modelos
+ *
+ */
 #include "model.hpp"
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
+#include "sokol_time.h"
 #include "stb_image.h"
+
+#include "render.hpp"
 
 #include "default.glsl.h"
 
-Model::Model(const char *path) : m_scale(1.0f, 1.0f, 1.0f) {
+Model::Model(const char *path) { init(path); }
+
+Model::Model(const Model &other) : m_meshes(other.m_meshes) {
+  // Warning: por enquanto não estou passando os demais dados, lembre-se disso.
+}
+
+Model &Model::operator=(const Model &other) {
+  Model tmp(other);
+  std::swap(m_meshes, tmp.m_meshes);
+  return *this;
+}
+
+Model::Model(Model &&other) : m_meshes(other.m_meshes) {
+  // Warning: por enquanto não estou passando os demais dados, lembre-se disso.
+}
+
+Model &Model::operator=(Model &&other) {
+  Model m(other);
+  std::swap(m_meshes, m.m_meshes);
+  return *this;
+}
+
+Model::~Model() {
+  for (auto m : m_meshes) {
+    m.destroy();
+  }
+}
+
+void Model::init(const char *path) {
+  m_pos = glm::vec3(0.0f, 0.0f, 0.0f);
+  m_scale = glm::vec3(1.0f, 1.0f, 1.0f);
+  m_axis = glm::vec3(0.0f, 1.0f, 0.0f);
+  m_rotation = 0.0f;
+
   u32 flags =
       aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_GenNormals;
 
@@ -28,45 +70,53 @@ Model::Model(const char *path) : m_scale(1.0f, 1.0f, 1.0f) {
   m_directory = p.c_str();
 
   processNode(scene->mRootNode, scene);
-
-  LogInfo("Model created");
-}
-
-Model::~Model() {
-  m_textures_loaded.clear();
-
-  for (auto m : m_meshes) {
-    m.destroy();
-  }
-  m_meshes.clear();
-
-  LogInfo("Model destroyed");
 }
 
 void Model::draw(Camera &cam) {
-  m_model = glm::mat4(1.0f);
+  glm::mat4 m_model = glm::mat4(1.0f);
   m_model = glm::translate(m_model, m_pos);
   m_model = glm::scale(m_model, m_scale);
+  m_model = glm::rotate(m_model, glm::radians(m_rotation), m_axis);
 
-  for (size_t i = 0; i < m_meshes.size(); i++) {
-    auto &m = m_meshes[i];
-    m.begin();
+  vs_params_t vs_params = {};
+  vs_params.mvp = cam.getMatrix() * m_model;
 
-    vs_params_t vs_params = {};
-    vs_params.mvp = cam.getMatrix() * m_model;
+  // 11.807526  -- class
+  // 9.103988   -- struct
+  // 7.926278 -- alocando/limpando buffer
+  // 1.646011 -- buffer alocado uma vez
+  // u64 start = stm_now();
+
+  for (Mesh &m : m_meshes) {
+    if (m.m_textures.size() == 0 || !m.m_textures[0].loaded) {
+      continue;
+    }
+
+    sg_bindings bind = {};
+    bind.vertex_buffers[0] = m.m_vbo;
+    bind.index_buffer = m.m_ebo;
+
+    bind.images[IMG_tex].id = m.m_textures[0].id;
+    bind.samplers[SMP_smp] = m.m_textures[0].smp;
+
+    sg_apply_bindings(&bind);
+
     sg_apply_uniforms(UB_vs_params, SG_RANGE_REF(vs_params));
 
-    m.draw(cam);
-
-    m.end();
+    m.draw();
   }
+
+  // u64 elapsed = stm_since(start);
+  // LogInfo("%lf", stm_ms(elapsed));
+  // abort();
 }
 
 void Model::processNode(aiNode *node, const aiScene *scene) {
   u32 i;
   for (i = 0; i < node->mNumMeshes; i++) {
     aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-    m_meshes.push_back(processMesh(mesh, scene));
+    Mesh m = processMesh(mesh, scene);
+    m_meshes.push_back(std::move(m));
   }
 
   for (i = 0; i < node->mNumChildren; i++) {
@@ -148,13 +198,12 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
   std::vector<Texture> textures;
 
   for (u32 i = 0; i < mat->GetTextureCount(type); i++) {
-
     aiString str;
     mat->GetTexture(type, i, &str);
 
     bool skip = false;
 
-    for (u32 j = 0; j < m_textures_loaded.size(); j++) {
+    for (size_t j = 0; j < m_textures_loaded.size(); j++) {
       Texture &t = m_textures_loaded.at(j);
 
       if (strcmp(t.path.data(), str.C_Str()) == 0) {
@@ -165,19 +214,15 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
     }
 
     if (!skip) {
-      sg_sampler_desc desc = {};
-      Texture tex = {};
+      std::string filename = getTexturePath(str.C_Str());
 
-      desc.min_filter = SG_FILTER_LINEAR;
-      desc.mag_filter = SG_FILTER_LINEAR;
-      tex.smp = sg_make_sampler(&desc);
+      Texture tex;
+      tex.load(filename.c_str(), (TextureType)tex_type);
 
-      tex.id = textureFromFile(str.C_Str(), m_directory.c_str());
+      if (tex.loaded) {
+        textures.push_back(tex);
+      }
 
-      tex.type = (TextureType)tex_type;
-      tex.path = str.C_Str();
-
-      textures.push_back(tex);
       m_textures_loaded.push_back(tex);
     }
   }
@@ -185,60 +230,17 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
   return textures;
 }
 
-u32 Model::textureFromFile(const char *path, const char *dir) {
-  const char *slash = "/";
-  char filename[512];
+void initModelStore(ModelStore &store, const Model &model,
+                    const Transform &trans) {
+  store.models.push_back(model);
+  store.transforms.push_back(trans);
+}
 
-  strcpy(filename, dir);
-  strcat(filename, slash);
-  strcat(filename, path);
+void updateModelStore(ModelStore &store) {
+  size_t i;
 
-  sg_image img = {};
-
-  int w, h, nch;
-  stbi_set_flip_vertically_on_load(true);
-  stbi_uc *data = stbi_load(filename, &w, &h, &nch, 4);
-
-  if (data) {
-    LogInfo("Loading texture: %s", filename);
-
-    sg_image_desc desc = {};
-    desc.type = SG_IMAGETYPE_2D;
-    desc.width = w;
-    desc.height = h;
-    desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    desc.data.subimage[0][0].ptr = data;
-    desc.data.subimage[0][0].size = w * h * 4;
-
-    img = sg_make_image(&desc);
-  } else {
-    LogError("Texture loading error %s file: %s", stbi_failure_reason(),
-             filename);
-    img.id = 0;
+  for (i = 0; i < store.models.size(); i++) {
+    Model &m = store.models.at(i);
+    m.setTransformitions(store.transforms.at(i));
   }
-
-  stbi_image_free(data);
-
-  return img.id;
-}
-
-void Model::setPos(glm::vec3 pos) {
-  m_pos = pos;
-  // for (Mesh m : m_meshes) {
-  //   m.setPos(pos);
-  // }
-}
-
-void Model::setScale(glm::vec3 scale) {
-  m_scale = scale;
-  // for (Mesh m : m_meshes) {
-  //   m.setScale(scale);
-  // }
-}
-
-void Model::setRotation(glm::vec3 rot) {
-  // TODO
-  // for (Mesh m : m_meshes) {
-  //   m.setRotation(rot);
-  // }
 }

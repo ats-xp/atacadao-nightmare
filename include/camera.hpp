@@ -35,6 +35,13 @@ class Camera {
 
 public:
   Camera(glm::vec3 pos = glm::vec3(0.0f));
+
+  Camera(Camera &other);
+  Camera &operator=(Camera &other);
+
+  Camera(const Camera &&other);
+  Camera &operator=(const Camera &&other);
+
   ~Camera() = default;
 
   void updateVectors();
@@ -58,7 +65,7 @@ public:
 
   inline glm::mat4 getProjectionMatrix() const {
     return glm::perspectiveRH_NO(glm::radians(m_fov), m_win_w / m_win_h, m_near,
-                            m_far);
+                                 m_far);
   }
 
   inline glm::mat4 getViewMatrix() const {

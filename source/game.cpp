@@ -22,9 +22,6 @@ Game::Game() {
 
   m_player = std::make_shared<Player>(glm::vec3(0.0f));
 
-  mdls.push_back(
-      std::make_shared<Model>("assets/models/Ada Wong/PAD1.fbx"));
-
   glm::vec3 pos[10] = {
       glm::vec3(0.0f, 0.0f, 0.0f),   glm::vec3(10.0f, 0.0f, 0.0f),
       glm::vec3(0.0f, 10.0f, 0.0f),  glm::vec3(0.0f, 0.0f, 10.0f),
@@ -32,20 +29,23 @@ Game::Game() {
       glm::vec3(-10.0f, 0.0f, 0.0f)};
 
   for (int i = 0; i < 7; i++) {
-    mdls.push_back(std::make_shared<Model>("assets/models/Beat/Beat.obj"));
-    mdls[i + 1]->setPos(pos[i]);
+    mdls.push_back(new Model("assets/models/Beat/Beat.obj"));
+    mdls[i]->setPos(pos[i]);
   }
 
   LogInfo("Game created");
 }
 
-Game::~Game() { LogInfo("Game deleted"); }
+Game::~Game() {
+  for (size_t i = 0; i < mdls.size(); i++) {
+    delete mdls[i];
+  }
+
+  LogInfo("Game deleted");
+}
 
 void Game::update(f32 dt, Input &inp) {
-  m_info = smemtrack_info();
-  LogInfo(FMT_I32, m_info.num_allocs);
-
-  f32 speed = 0.02f * dt;
+  f32 speed = 5.0f * dt;
   if (inp.up)
     m_cam->move(CameraDirection::UP, speed);
   else if (inp.down)
@@ -56,13 +56,16 @@ void Game::update(f32 dt, Input &inp) {
   else if (inp.right)
     m_cam->move(CameraDirection::RIGHT, speed);
 
+  mdls[0]->resetRotation();
+  mdls[0]->setRotationY(rot += 0.2f);
+
   // m_player->update(inp);
 }
 
 void Game::render() {
   m_render.use();
 
-  for (auto m : mdls) {
+  for (Model *m : mdls) {
     m->draw(*m_cam);
   }
 
@@ -74,5 +77,9 @@ void Game::handleEvent(const sapp_event *e) {
     m_mouse_x += e->mouse_dx;
     m_mouse_y += e->mouse_dy;
     m_cam->updateMouse(m_mouse_x, m_mouse_y);
+  }
+
+  if (e->type == SAPP_EVENTTYPE_FOCUSED) {
+    sapp_lock_mouse(true);
   }
 }
