@@ -10,7 +10,6 @@ void Texture::load(const char *filename, TextureType tex_type) {
   type = tex_type;
 
   int w, h, nch;
-  stbi_set_flip_vertically_on_load(true);
   stbi_uc *data = stbi_load(filename, &w, &h, &nch, 4);
 
   sg_image img = {};
@@ -37,12 +36,18 @@ void Texture::load(const char *filename, TextureType tex_type) {
 
   id = img.id;
 
-  sg_sampler_desc desc = {};
-  desc.min_filter = SG_FILTER_NEAREST;
-  desc.mag_filter = SG_FILTER_NEAREST;
-  smp = sg_make_sampler(&desc);
-
   stbi_image_free(data);
+}
+
+void Texture::attrib(const sg_filter &min_filter, const sg_filter &max_filter,
+                     const sg_wrap &wrap_s, const sg_wrap &wrap_t) {
+
+  sg_sampler_desc desc = {};
+  desc.min_filter = min_filter;
+  desc.mag_filter = max_filter;
+  desc.wrap_u = wrap_s;
+  desc.wrap_v = wrap_t;
+  smp = sg_make_sampler(&desc);
 }
 
 void Texture::destroy() {
@@ -55,16 +60,19 @@ void Texture::destroy() {
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<u16> indices,
            std::vector<Texture> textures)
     : m_vertices(vertices), m_indices(indices), m_textures(textures) {
+  assert(m_vertices.size() != 0);
+
   sg_buffer_desc vbuf_desc = {};
   vbuf_desc.data.ptr = m_vertices.data();
   vbuf_desc.data.size = m_vertices.size() * sizeof(Vertex);
+
+  m_vbo = sg_make_buffer(&vbuf_desc);
 
   sg_buffer_desc ibuf_desc = {};
   ibuf_desc.usage.index_buffer = true;
   ibuf_desc.data.ptr = m_indices.data();
   ibuf_desc.data.size = m_indices.size() * sizeof(u16);
 
-  m_vbo = sg_make_buffer(&vbuf_desc);
   m_ebo = sg_make_buffer(&ibuf_desc);
 }
 
@@ -107,4 +115,15 @@ void Mesh::destroy() {
   for (Texture &t : m_textures) {
     t.destroy();
   }
+}
+
+void Mesh::bind(u16 img, u16 smp) {
+  sg_bindings bind = {};
+  bind.vertex_buffers[0] = m_vbo;
+  bind.index_buffer = m_ebo;
+
+  bind.images[img].id = m_textures[0].id;
+  bind.samplers[smp] = m_textures[0].smp;
+
+  sg_apply_bindings(&bind);
 }

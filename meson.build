@@ -8,6 +8,7 @@ project(
 
 cc = meson.get_compiler('cpp')
 
+# TODO refatorar isso
 sokol_shdc = find_program('sokol-shdc', 'vendor/sokol-tools-bin/bin/linux', required: true)
 
 if sokol_shdc.found()
@@ -16,6 +17,18 @@ default_sh = custom_target(
   'default.glsl.h',
   input : 'shaders/default.glsl',
   output : 'default.glsl.h',
+  command : [
+    sokol_shdc,
+    '--input', '@INPUT@',
+    '--output', '@OUTPUT@',
+    '--slang', 'glsl410:glsl300es',
+    ]
+  )
+
+billboard_shd = custom_target(
+  'billboard.glsl.h',
+  input : 'shaders/billboard.glsl',
+  output : 'billboard.glsl.h',
   command : [
     sokol_shdc,
     '--input', '@INPUT@',
@@ -52,6 +65,7 @@ dependencies = [
 subdir('source')
 
 src_dir += default_sh
+src_dir += billboard_shd
 src_dir += shape_sh
 
 inc = []

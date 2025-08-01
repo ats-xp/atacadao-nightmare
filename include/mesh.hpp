@@ -27,7 +27,6 @@ struct Transform {
 };
 
 struct Vertex {
-  glm::vec4 color;
   glm::vec3 pos;
   glm::vec3 normal;
   glm::vec2 tex_coords;
@@ -41,12 +40,16 @@ struct Texture {
 
   bool loaded;
 
-  void load(const char *filename, TextureType tex_type);
+  void load(const char *filename, TextureType tex_type = DIFFUSE);
+  void attrib(const sg_filter &min_filter = SG_FILTER_LINEAR,
+              const sg_filter &max_filter = SG_FILTER_LINEAR,
+              const sg_wrap &wrap_s = SG_WRAP_REPEAT,
+              const sg_wrap &wrap_t = SG_WRAP_REPEAT);
   void destroy();
 };
 
 class Mesh {
-  public:
+public:
   std::vector<Vertex> m_vertices;
   std::vector<u16> m_indices;
   std::vector<Texture> m_textures;
@@ -54,7 +57,8 @@ class Mesh {
   sg_buffer m_vbo;
   sg_buffer m_ebo;
 
-  Mesh(std::vector<Vertex> vertices, std::vector<u16> indices, std::vector<Texture> textures);
+  Mesh(std::vector<Vertex> vertices, std::vector<u16> indices,
+       std::vector<Texture> textures);
   Mesh(const Mesh &other);
   Mesh &operator=(const Mesh &other);
 
@@ -65,4 +69,6 @@ class Mesh {
 
   void draw();
   void destroy();
+
+  void bind(u16 img, u16 smp);
 };

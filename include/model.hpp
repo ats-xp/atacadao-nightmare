@@ -73,9 +73,11 @@ public:
 };
 
 struct ModelStore {
-  std::vector<Model> models;
+  std::vector<Model *> models;
   std::vector<Transform> transforms;
 };
 
-void initModelStore(ModelStore &store, const Model &model,
+void addModelStore(ModelStore &store, Model *model,
                     const Transform &trans);
+void updateModelStore(ModelStore &store);
+void drawModelStore(ModelStore &store, Camera &cam);

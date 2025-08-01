@@ -18,11 +18,8 @@
 
 #include "base.h"
 
-#include "camera.hpp"
 #include "game.hpp"
 #include "menu.hpp"
-#include "player.hpp"
-#include "shape.hpp"
 
 static struct {
   /*
@@ -46,7 +43,7 @@ static void init() {
   desc.environment = sglue_environment();
   desc.logger.func = slog_func;
   desc.buffer_pool_size = 256;
-  desc.sampler_pool_size = 128;
+  // desc.sampler_pool_size = 128;
   desc.allocator.alloc_fn = smemtrack_alloc,
   desc.allocator.free_fn = smemtrack_free, sg_setup(&desc);
 
@@ -164,17 +161,21 @@ sapp_desc sokol_main(int argc, char **argv) {
   desc.frame_cb = frame;
   desc.cleanup_cb = cleanup;
   desc.event_cb = handleInput;
-  desc.width = 640;
-  desc.height = 480;
+  desc.logger.func = slog_func;
+
+  // tmp = mul-size
+  desc.width = 640 * 1.5;
+  desc.height = 480 * 1.5;
+
   desc.window_title = "Atacado - Nightmare";
   desc.icon.sokol_default = true;
-  desc.logger.func = slog_func;
-  desc.sample_count = 2;
-  desc.gl_major_version = 3;
-  desc.gl_minor_version = 3;
 
+  desc.sample_count = 2;
   desc.swap_interval = 1;
   desc.high_dpi = true;
+
+  desc.gl_major_version = 3;
+  desc.gl_minor_version = 3;
 
   return desc;
 }

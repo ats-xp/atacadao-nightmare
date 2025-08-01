@@ -8,6 +8,7 @@ src_dir = files(
   'camera.cpp',
   'model.cpp',
   'render.cpp',
+  'billboard.cpp',
   'sokol_impl.c',
   'base_impl.c',
   'stb_impl.c',

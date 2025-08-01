@@ -1,7 +1,8 @@
 /*
  *
  * TODO Otimizar a 'load texture'
- * TODO Terminar e melhorar a 'store' de modelos
+ * TODO Aprimorar a Model Store
+ * TODO Melhorar as funções de rotação
  *
  */
 #include "model.hpp"
@@ -11,8 +12,6 @@
 
 #include "sokol_time.h"
 #include "stb_image.h"
-
-#include "render.hpp"
 
 #include "default.glsl.h"
 
@@ -73,13 +72,13 @@ void Model::init(const char *path) {
 }
 
 void Model::draw(Camera &cam) {
-  glm::mat4 m_model = glm::mat4(1.0f);
-  m_model = glm::translate(m_model, m_pos);
-  m_model = glm::scale(m_model, m_scale);
-  m_model = glm::rotate(m_model, glm::radians(m_rotation), m_axis);
+  glm::mat4 model = glm::mat4(1.0f);
+  model = glm::translate(model, m_pos);
+  // model = glm::scale(model, m_scale);
+  // model = glm::rotate(model, glm::radians(m_rotation), m_axis);
 
   vs_params_t vs_params = {};
-  vs_params.mvp = cam.getMatrix() * m_model;
+  vs_params.mvp = cam.getMatrix() * model;
 
   // 11.807526  -- class
   // 9.103988   -- struct
@@ -92,14 +91,7 @@ void Model::draw(Camera &cam) {
       continue;
     }
 
-    sg_bindings bind = {};
-    bind.vertex_buffers[0] = m.m_vbo;
-    bind.index_buffer = m.m_ebo;
-
-    bind.images[IMG_tex].id = m.m_textures[0].id;
-    bind.samplers[SMP_smp] = m.m_textures[0].smp;
-
-    sg_apply_bindings(&bind);
+    m.bind(IMG_tex, SMP_smp);
 
     sg_apply_uniforms(UB_vs_params, SG_RANGE_REF(vs_params));
 
@@ -158,8 +150,6 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
       vertex.tex_coords = {0.0f, 0.0f};
     }
 
-    vertex.color = {1.0f, 1.0f, 1.0f, 1.0f};
-
     vertices.push_back(vertex);
   }
 
@@ -217,7 +207,9 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
       std::string filename = getTexturePath(str.C_Str());
 
       Texture tex;
+      stbi_set_flip_vertically_on_load(true);
       tex.load(filename.c_str(), (TextureType)tex_type);
+      tex.attrib();
 
       if (tex.loaded) {
         textures.push_back(tex);
@@ -230,17 +222,26 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
   return textures;
 }
 
-void initModelStore(ModelStore &store, const Model &model,
+void addModelStore(ModelStore &store, Model *model,
                     const Transform &trans) {
+  model->setPos(trans.position);
+
   store.models.push_back(model);
   store.transforms.push_back(trans);
 }
 
 void updateModelStore(ModelStore &store) {
   size_t i;
-
   for (i = 0; i < store.models.size(); i++) {
-    Model &m = store.models.at(i);
-    m.setTransformitions(store.transforms.at(i));
+    Model *m = store.models.at(i);
+    m->setTransformitions(store.transforms.at(i));
+  }
+}
+
+void drawModelStore(ModelStore &store, Camera &cam) {
+  size_t i;
+  for (i = 0; i < store.models.size(); i++) {
+    Model *m = store.models.at(i);
+    m->draw(cam);
   }
 }
