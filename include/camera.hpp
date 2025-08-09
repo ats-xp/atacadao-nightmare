@@ -76,4 +76,12 @@ public:
     updateVectors();
     return getProjectionMatrix() * getViewMatrix();
   }
+
+  constexpr glm::vec3 getFront() const {
+    return m_front;
+  }
+
+  constexpr glm::vec3 getRight() const {
+    return m_right;
+  }
 };

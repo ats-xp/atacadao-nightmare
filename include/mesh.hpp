@@ -24,6 +24,13 @@ struct Transform {
   glm::vec3 position;
   glm::vec3 scale;
   glm::vec3 rotation;
+
+  constexpr void setPosition(const glm::vec3 &offset) { position = offset; }
+
+  constexpr void move(const glm::vec3 &offset) { position += offset; }
+  constexpr void moveX(const f32 &x) { position.x += x; }
+  constexpr void moveY(const f32 &y) { position.y += y; }
+  constexpr void moveZ(const f32 &z) { position.z += z; }
 };
 
 struct Vertex {
@@ -47,6 +54,9 @@ struct Texture {
               const sg_wrap &wrap_t = SG_WRAP_REPEAT);
   void destroy();
 };
+
+extern std::vector<Texture> texture_pool;
+extern u8 io_texture_buffer[256 * 1024];
 
 class Mesh {
 public:

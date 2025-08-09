@@ -6,19 +6,30 @@
 #include "camera.hpp"
 #include "shape.hpp"
 #include "input.hpp"
+#include "model.hpp"
+#include "physics.hpp"
 
 class Player {
+public:
+  Model *m_model;
+
+  glm::vec3 m_cam_front;
+  glm::vec3 m_cam_right;
+
   glm::vec3 m_pos;
   glm::vec3 m_vel;
+  f32 m_speed;
 
-public:
-  std::shared_ptr<Shape> m_cube;
+  Shape *m_collider_shape;
+  AABB m_collider;
 
-  Player(glm::vec3 pos);
+  Player(const glm::vec3 &pos);
   ~Player();
 
-  void update(Input &inp);
-  void render(Camera &cam);
+  void input(Input &inp);
+  void update(f32 dt);
+  void draw(Camera &cam);
+  void drawDebug(Camera &cam);
 
-  inline void setPos(glm::vec3 pos) {m_pos = pos;}
+  constexpr void setPos(const glm::vec3 &pos) {m_pos = pos;}
 };

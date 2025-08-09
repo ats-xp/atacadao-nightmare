@@ -1,21 +1,77 @@
 #include "player.hpp"
 
-Player::Player(glm::vec3 pos) : m_pos(pos) {
-  // m_cube = std::make_shared<Shape>();
+#include "shape.glsl.h"
+
+Player::Player(const glm::vec3 &pos) {
+  Transform trans;
+  trans.position = pos;
+
+  m_pos = pos;
+  m_vel = glm::vec3(0.0f);
+  m_speed = 1.0f;
+
+  // m_model = new Model("assets/models/Beat/Beat.obj");
+  // m_model->setTransformitions(trans);
+
+  m_collider.min = m_pos;
+  glm::vec3 p = m_pos;
+  p += 1.0f;
+  m_collider.max = p;
+
+  m_collider_shape = new Shape(m_pos, glm::vec3(1.0f));
 }
 
 Player::~Player() {
-
+  // Warning: ?????
+  // porqeu está chamando a Destructor quando é declarada ??
+  // delete m_model;
 }
 
-void Player::update(Input &inp) {
-  //
-  // if (inp.up) 
+void Player::input(Input &inp) {
+  m_vel = glm::vec3(0.0f);
 
-  // m_cube->setPos(m_pos);
-  // m_pos += m_vel;
+  if (inp.up)
+    m_vel = m_cam_front;
+  else if (inp.down)
+    m_vel = -m_cam_front;
+
+  if (inp.left)
+    m_vel = -m_cam_right;
+  else if (inp.right)
+    m_vel = m_cam_right;
 }
 
-void Player::render(Camera &cam) {
-  // m_cube->draw(cam);
+void Player::update(f32 dt) {
+  m_pos += m_vel * m_speed * dt;
+
+  Transform trans;
+  trans.position = m_pos;
+
+  // m_model->setTransformitions(trans);
+}
+
+void Player::draw(Camera &cam) {
+  // m_model->draw(cam);
+  cam.setPosition(m_pos);
+  m_cam_front = cam.getFront();
+  m_cam_right = cam.getRight();
+}
+
+void Player::drawDebug(Camera &cam) {
+  m_collider_shape->bind();
+
+  glm::vec3 min = cam.getPosition() - m_collider.getHalfSize();
+  glm::vec3 max = cam.getPosition() + m_collider.getHalfSize();
+
+  glm::vec3 size = max - min;
+  glm::vec3 center = (max + min) * .5f;
+
+  glm::mat4 m_model = glm::mat4(1.0f);
+  m_model = glm::translate(m_model, center);
+  m_model = glm::scale(m_model, size);
+
+  vs_params_shape_t vs_params = {};
+  vs_params.mvp = cam.getMatrix() * m_model;
+  sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
+  m_collider_shape->draw(cam);
 }

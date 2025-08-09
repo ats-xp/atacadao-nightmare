@@ -58,7 +58,11 @@ dependencies = [
   dependency('xi'),
   dependency('xcursor'),
   dependency('gl'),
+
   dependency('assimp'),
+
+  # dependency('Jolt'),
+
   cc.find_library('glm', dirs : glm_lib_dir),
 ]
 

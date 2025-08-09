@@ -7,4 +7,6 @@ struct Input {
   bool down;
   bool left;
   bool right;
+
+  bool inc, dec; // debug
 };

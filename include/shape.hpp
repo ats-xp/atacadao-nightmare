@@ -9,6 +9,7 @@
 #include "base.h"
 
 #include "camera.hpp"
+#include "mesh.hpp"
 
 //
 // MAYBE:
@@ -20,17 +21,16 @@ public:
 };
 
 class Shape : public ShapeInterface {
-  sg_pipeline m_pipe{};
-  sg_bindings m_bind{};
-  sg_shader m_shader;
   sshape_element_range_t m_elm;
 
   glm::mat4 m_model;
 
-public:
-  glm::vec3 m_pos;
+  sg_buffer m_vbo, m_ebo;
 
-  Shape(glm::vec3 pos = glm::vec3(0.0f));
+public:
+  Transform m_trans;
+
+  Shape(const glm::vec3 &pos, const glm::vec3 &size);
   ~Shape();
 
   sshape_buffer_t create(sshape_buffer_t &buf) override {
@@ -43,11 +43,14 @@ public:
     return sshape_build_box(&buf, &b);
   };
 
-  void draw(Camera &cam);
+  void bind() {
+    sg_bindings bind = {};
 
-  inline void rotate(f32 degrees, glm::vec3 axis) {
-    m_model = glm::rotate(m_model, glm::radians(degrees), axis);
+    bind.vertex_buffers[0] = m_vbo;
+    bind.index_buffer = m_ebo;
+
+    sg_apply_bindings(&bind);
   }
 
-  inline void setPos(glm::vec3 pos) { m_pos = pos; }
+  void draw(Camera &cam);
 };

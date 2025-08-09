@@ -2,20 +2,20 @@
 
 #include "mesh.hpp"
 
+#include "physics.hpp"
+
 #include <assimp/scene.h>
 
 class Model {
   std::string m_directory;
 
   std::vector<Mesh> m_meshes;
-  std::vector<Texture> m_textures_loaded;
+  // std::vector<Texture> m_textures_loaded;
 
   glm::vec3 m_pos;
   glm::vec3 m_scale;
   glm::vec3 m_axis;
   f32 m_rotation;
-
-  Transform m_transformition;
 
   void processNode(aiNode *node, const aiScene *scene);
   Mesh processMesh(aiMesh *mesh, const aiScene *scene);
@@ -28,6 +28,8 @@ class Model {
   }
 
 public:
+  Transform m_transformition;
+
   Model(const char *path);
 
   Model(const Model &other);
@@ -70,6 +72,8 @@ public:
   constexpr void setTransformitions(const Transform &trans) {
     m_transformition = trans;
   }
+
+  constexpr std::vector<Mesh> getMeshes() const { return m_meshes; }
 };
 
 struct ModelStore {
@@ -77,7 +81,6 @@ struct ModelStore {
   std::vector<Transform> transforms;
 };
 
-void addModelStore(ModelStore &store, Model *model,
-                    const Transform &trans);
+void addModelStore(ModelStore &store, Model *model, const Transform &trans);
 void updateModelStore(ModelStore &store);
 void drawModelStore(ModelStore &store, Camera &cam);

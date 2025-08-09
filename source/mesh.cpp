@@ -1,7 +1,18 @@
+/*
+ *
+ * TODO Criar prevenções á dados relacionados na pilha de Texturas
+ *
+ */
+
+#include "sokol_fetch.h"
 #include "sokol_gfx.h"
 #include "stb_image.h"
 
 #include "mesh.hpp"
+
+// tmp name??
+std::vector<Texture> texture_pool;
+u8 io_texture_buffer[256 * 1024];
 
 void Texture::load(const char *filename, TextureType tex_type) {
   std::string f = std::string(filename);

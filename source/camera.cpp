@@ -13,7 +13,7 @@ Camera::Camera(glm::vec3 pos) : m_pos(pos) {
   m_yaw = -90.0f;
   m_pitch = 0.0f;
 
-  m_sensivity = 0.06f;
+  m_sensivity = 0.08f;
 
   updateVectors();
 }

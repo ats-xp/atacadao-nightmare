@@ -1,6 +1,7 @@
 /*
  *
  * TODO Otimizar a 'load texture'
+ * TODO Carregar as texturas de forma assincrona'
  * TODO Aprimorar a Model Store
  * TODO Melhorar as funções de rotação
  *
@@ -10,10 +11,13 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
+#include "sokol_fetch.h"
 #include "sokol_time.h"
 #include "stb_image.h"
 
 #include "default.glsl.h"
+
+static void fecthTextureCallback(const sfetch_response_t *response);
 
 Model::Model(const char *path) { init(path); }
 
@@ -73,7 +77,7 @@ void Model::init(const char *path) {
 
 void Model::draw(Camera &cam) {
   glm::mat4 model = glm::mat4(1.0f);
-  model = glm::translate(model, m_pos);
+  model = glm::translate(model, m_transformition.position);
   // model = glm::scale(model, m_scale);
   // model = glm::rotate(model, glm::radians(m_rotation), m_axis);
 
@@ -193,18 +197,39 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
 
     bool skip = false;
 
-    for (size_t j = 0; j < m_textures_loaded.size(); j++) {
-      Texture &t = m_textures_loaded.at(j);
-
+    for (Texture &t : texture_pool) {
       if (strcmp(t.path.data(), str.C_Str()) == 0) {
-        textures.push_back(t);
         skip = true;
+        textures.push_back(t);
         break;
       }
     }
 
+    // for (size_t j = 0; j < m_textures_loaded.size(); j++) {
+    //   Texture &t = m_textures_loaded.at(j);
+    //
+    //   if (strcmp(t.path.data(), str.C_Str()) == 0) {
+    //     textures.push_back(t);
+    //     skip = true;
+    //     break;
+    //   }
+    // }
+
     if (!skip) {
       std::string filename = getTexturePath(str.C_Str());
+      Texture t;
+
+      // sfetch_request_t desc = {};
+      // desc.path = filename.c_str();
+      // desc.callback = fn;
+      // desc.buffer = SFETCH_RANGE(io_texture_buffer);
+      // sfetch_send(&desc);
+      //
+      // for (Texture &t : texture_pool) {
+      //   if (strcmp(t.path.data(), str.C_Str()) == 0 && t.loaded) {
+      //     textures.push_back(t);
+      //   }
+      // }
 
       Texture tex;
       stbi_set_flip_vertically_on_load(true);
@@ -212,18 +237,18 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
       tex.attrib();
 
       if (tex.loaded) {
+        texture_pool.push_back(tex);
         textures.push_back(tex);
       }
 
-      m_textures_loaded.push_back(tex);
+      // m_textures_loaded.push_back(tex);
     }
   }
 
   return textures;
 }
 
-void addModelStore(ModelStore &store, Model *model,
-                    const Transform &trans) {
+void addModelStore(ModelStore &store, Model *model, const Transform &trans) {
   model->setPos(trans.position);
 
   store.models.push_back(model);
@@ -234,7 +259,10 @@ void updateModelStore(ModelStore &store) {
   size_t i;
   for (i = 0; i < store.models.size(); i++) {
     Model *m = store.models.at(i);
-    m->setTransformitions(store.transforms.at(i));
+    Transform &t = store.transforms.at(i);
+
+    // m->m_collider.setPosition(t.position);
+    m->setTransformitions(t);
   }
 }
 
@@ -243,5 +271,19 @@ void drawModelStore(ModelStore &store, Camera &cam) {
   for (i = 0; i < store.models.size(); i++) {
     Model *m = store.models.at(i);
     m->draw(cam);
+  }
+}
+
+static void fecthTextureCallback(const sfetch_response_t *response) {
+  if (response->fetched) {
+
+    Texture tex;
+    stbi_set_flip_vertically_on_load(true);
+    tex.load(response->path);
+    tex.attrib();
+
+    if (tex.loaded) {
+      texture_pool.push_back(tex);
+    }
   }
 }

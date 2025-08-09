@@ -39,29 +39,28 @@ static struct {
 } state;
 
 static void init() {
-  sg_desc desc = {};
-  desc.environment = sglue_environment();
-  desc.logger.func = slog_func;
-  desc.buffer_pool_size = 256;
-  // desc.sampler_pool_size = 128;
-  desc.allocator.alloc_fn = smemtrack_alloc,
-  desc.allocator.free_fn = smemtrack_free, sg_setup(&desc);
+  {
+    sg_desc desc = {};
+    desc.environment = sglue_environment();
+    desc.logger.func = slog_func;
+    desc.buffer_pool_size = 256;
+    // desc.sampler_pool_size = 128;
+    desc.allocator.alloc_fn = smemtrack_alloc,
+    desc.allocator.free_fn = smemtrack_free;
+    sg_setup(&desc);
+  }
 
-  sgl_desc_t sgl_desc = {};
-  sgl_desc.logger.func = slog_func;
-  sgl_setup(&sgl_desc);
-
-  sfetch_desc_t fdesc = {};
-  fdesc.max_requests = 1;
-  fdesc.num_channels = 1;
-  fdesc.num_lanes = 1;
-  sfetch_setup(&fdesc);
+  {
+    sgl_desc_t desc = {};
+    desc.logger.func = slog_func;
+    sgl_setup(&desc);
+  }
 
   stm_setup();
 
   state.last_time = stm_now();
 
-  state.st = std::make_unique<Game>();
+  state.st = std::make_unique<Menu>();
   sapp_lock_mouse(true);
 }
 
@@ -136,6 +135,12 @@ static void handleInput(const sapp_event *e) {
     else if (e->key_code == SAPP_KEYCODE_D)
       inp.right = btn_down;
 
+    
+    if (e->key_code == SAPP_KEYCODE_N)
+      inp.inc = btn_down;
+    else if (e->key_code == SAPP_KEYCODE_M)
+      inp.dec = btn_down;
+
     if (e->key_repeat)
       return;
 
@@ -147,7 +152,6 @@ static void handleInput(const sapp_event *e) {
 static void cleanup() {
   state.st.reset();
 
-  sfetch_shutdown();
   sgl_shutdown();
   sg_shutdown();
 }
@@ -164,8 +168,8 @@ sapp_desc sokol_main(int argc, char **argv) {
   desc.logger.func = slog_func;
 
   // tmp = mul-size
-  desc.width = 640 * 1.5;
-  desc.height = 480 * 1.5;
+  desc.width = 640;
+  desc.height = 480;
 
   desc.window_title = "Atacado - Nightmare";
   desc.icon.sokol_default = true;

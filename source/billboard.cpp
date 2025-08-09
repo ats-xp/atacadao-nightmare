@@ -29,7 +29,7 @@ Billboard::Billboard(const char *texture) {
                        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(0.0f, 1.0f)));
 
   t.load(texture);
-  t.attrib(SG_FILTER_LINEAR, SG_FILTER_LINEAR, SG_WRAP_CLAMP_TO_EDGE,
+  t.attrib(SG_FILTER_NEAREST, SG_FILTER_NEAREST, SG_WRAP_CLAMP_TO_EDGE,
            SG_WRAP_CLAMP_TO_EDGE);
   tex.push_back(t);
 
