@@ -4,8 +4,10 @@
 
 #include "base.h"
 
-Shape::Shape(const glm::vec3 &pos, const glm::vec3 &size)  {
+Shape::Shape(const glm::vec3 &pos, const glm::vec3 &size,
+             const ShapeType &type) {
   m_trans.position = pos;
+  m_type = type;
 
   f32 vertices[1024];
   u16 indices[1024];
@@ -14,14 +16,27 @@ Shape::Shape(const glm::vec3 &pos, const glm::vec3 &size)  {
   buf.vertices.buffer = SSHAPE_RANGE(vertices);
   buf.indices.buffer = SSHAPE_RANGE(indices);
 
-  // buf = create(buf);
-  sshape_box_t b = {};
-  b.width = size.x;
-  b.height = size.y;
-  b.depth = size.z;
-  b.tiles = 1;
-  b.random_colors = true;
-  buf = sshape_build_box(&buf, &b);
+  switch ((u8)type) {
+  case BOX: {
+    sshape_box_t b = {};
+    b.width = size.x;
+    b.height = size.y;
+    b.depth = size.z;
+    b.tiles = 1;
+    b.random_colors = true;
+    buf = sshape_build_box(&buf, &b);
+    break;
+  }
+  case PLANE: {
+    sshape_plane_t p = {};
+    p.width = size.x;
+    p.depth = size.z;
+    p.tiles = 1;
+    p.random_colors = true;
+    buf = sshape_build_plane(&buf, &p);
+    break;
+  }
+  }
 
   assert(buf.valid);
 
@@ -34,8 +49,7 @@ Shape::Shape(const glm::vec3 &pos, const glm::vec3 &size)  {
   m_ebo = sg_make_buffer(&idesc);
 }
 
-Shape::~Shape() {
-}
+Shape::~Shape() {}
 
 void Shape::draw(Camera &cam) {
   // bind ...

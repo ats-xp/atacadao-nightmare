@@ -39,28 +39,59 @@ Game::Game() {
     sfetch_setup(&desc);
   }
 
-  m_cam = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 6.0f));
+  m_cam = std::make_shared<Camera>(glm::vec3(-12.861005, 1.293806, 0.921208));
   m_cam->setViewport(sapp_widthf(), sapp_heightf());
 
   initPipeline();
 
-  for (int i = 0; i < 4; i++) {
-    glm::vec3 pos[4] = {
-        glm::vec3(0.0f),
-        glm::vec3(-4.0f, 0.0f, -1.0f),
-        glm::vec3(0.0f, 4.0f, 0.0f),
-        glm::vec3(0.0f, -4.0f, 0.0f),
-    };
+  {
+    for (int i = 0; i < 2; i++) {
+      glm::vec3 pos[2] = {
+          glm::vec3(0.0f),
+          glm::vec3(-4.0f, 0.0f, -1.0f),
+      };
 
-    m_colliders_shape.push_back(new Shape(pos[i], glm::vec3(1.0f)));
+      m_colliders_shape.push_back(new Shape(pos[i], glm::vec3(1.0f)));
 
-    AABB c;
-    c.min = pos[i];
-    c.max = (pos[i] + 1.0f);
-    m_colliders.push_back(c);
+      AABB c;
+      c.min = (pos[i] - 1.0f);
+      c.max = (pos[i] + 1.0f);
+      m_colliders.push_back(c);
+    }
   }
 
-  m_player = std::make_shared<Player>(glm::vec3(-2.0f, 1.0f, 0.0f));
+  {
+    Ramp ramp;
+
+    glm::vec3 offset(2.0f, -1.0f, 2.0f);
+
+    ramp.v0 = glm::vec3(-1.0f, 0.0f, 0.0f);
+    ramp.v1 = glm::vec3(1.0f, 0.0f, 0.0f);
+    ramp.v2 = glm::vec3(1.0f, 1.0f, 2.0f);
+
+    ramp.v0 += offset;
+    ramp.v1 += offset;
+    ramp.v2 += offset;
+
+    glm::vec3 center = (ramp.v0 + ramp.v1 + ramp.v2) / 3.0f;
+
+    f32 scale = 4.0f;
+    ramp.v0 = center + (ramp.v0 - center) * scale;
+    ramp.v1 = center + (ramp.v1 - center) * scale;
+    ramp.v2 = center + (ramp.v2 - center) * scale;
+
+    glm::vec3 e1 = ramp.v1 - ramp.v0;
+    glm::vec3 e2 = ramp.v2 - ramp.v0;
+    glm::vec3 n = glm::normalize(glm::cross(e1, e2));
+
+    ramp.plane.normal = n;
+    ramp.plane.dist = glm::dot(n, ramp.v0);
+
+    m_ramps.push_back(ramp);
+    m_ramps_shape.push_back(new Shape(n, glm::vec3(1.0f), ShapeType::PLANE));
+  }
+
+  m_player = std::make_shared<Player>(glm::vec3(-4.0f, 0.0f, 4.0f));
 
   m_boards[0] = new Billboard("assets/tree.png");
   m_boards[0]->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -88,22 +119,11 @@ void Game::update(f32 dt, Input &inp) {
 
   m_player->input(inp);
 
-  // std::vector<AABB> boxes = {};
-  std::vector<Plane> planes;
-
   MoveResult r = stepSlideMove(m_player->m_collider, m_player->m_pos,
-                               m_player->m_vel, dt, m_colliders, planes);
+                               m_player->m_vel, dt, m_colliders, m_ramps);
 
-  // Dá para aprimorar isso...
-  if (r.hit) {
-    m_player->m_pos = r.final_center;
-    m_player->m_vel = r.final_velocity;
-
-    LogInfo("Final Center: %f, %f, %f", r.final_center.x, r.final_center.y,
-            r.final_center.z);
-    LogInfo("Final Velocity: %f, %f, %f", r.final_velocity.x,
-            r.final_velocity.y, r.final_velocity.z);
-  }
+  m_player->m_pos = r.final_center;
+  m_player->m_vel = r.final_velocity;
 
   m_player->update(dt);
 }
@@ -135,19 +155,44 @@ void Game::render() {
   // All 3D-Debug Render
   m_render_sp.use();
   {
-    // m_player->drawDebug(*m_cam);
+    m_player->drawDebug(*m_cam);
 
     for (size_t i = 0; i < m_colliders_shape.size(); i++) {
-      auto &c = m_colliders.at(i);
       auto &s = m_colliders_shape.at(i);
-      s->bind();
+      auto &c = m_colliders.at(i);
+
+      glm::mat4 m_model = glm::mat4(1.0f);
 
       glm::vec3 size = c.getSize();
       glm::vec3 center = c.getCenter();
 
+      m_model = glm::translate(m_model, center);
+      m_model = glm::scale(m_model, size);
+
+      s->bind();
+
+      vs_params_shape_t vs_params = {};
+      vs_params.mvp = m_cam->getMatrix() * m_model;
+      sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
+      s->draw(*m_cam);
+    }
+
+    for (size_t i = 0; i < m_ramps_shape.size(); i++) {
+      auto &s = m_ramps_shape.at(i);
+      auto &r = m_ramps.at(i);
+
+      glm::vec3 center = (r.v0 + r.v1 + r.v2) / 3.0f;
+
+      // glm::vec3 min = glm::min(glm::min(r.v0, r.v1), r.v2);
+      // glm::vec3 max = glm::max(glm::max(r.v0, r.v1), r.v2);
+
+      glm::vec3 size = glm::vec3(2.0f);
+
       glm::mat4 m_model = glm::mat4(1.0f);
       m_model = glm::translate(m_model, center);
       m_model = glm::scale(m_model, size);
+
+      s->bind();
 
       vs_params_shape_t vs_params = {};
       vs_params.mvp = m_cam->getMatrix() * m_model;

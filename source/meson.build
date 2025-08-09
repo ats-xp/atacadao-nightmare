@@ -13,5 +13,4 @@ src_dir = files(
   'sokol_impl.c',
   'base_impl.c',
   'stb_impl.c',
-  # 'jolt_impl.cpp',
   )

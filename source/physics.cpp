@@ -1,12 +1,8 @@
-/*
- *
- * TODO: Consertar o ponto de origem da Collider
- *
- */
-
 #include "physics.hpp"
 
 #include <ext/scalar_constants.hpp>
+
+constexpr float EPS = glm::epsilon<float>();
 
 bool rayAABB(const glm::vec3 &ray_origin, const glm::vec3 &ray_dir,
              const AABB &aabb, f32 &out_t_enter, f32 &out_t_exit,
@@ -21,7 +17,6 @@ bool rayAABB(const glm::vec3 &ray_origin, const glm::vec3 &ray_dir,
     f32 min = aabb.min[i];
     f32 max = aabb.max[i];
 
-    const float EPS = glm::epsilon<float>();
     if (std::abs(dir) < EPS) {
       if (origin < min || origin > max)
         return false;
@@ -54,23 +49,10 @@ bool rayAABB(const glm::vec3 &ray_origin, const glm::vec3 &ray_dir,
 
 TraceResult sweepAABBABB(const AABB &moving_box, const glm::vec3 &start_center,
                          const glm::vec3 &end_center, const AABB &static_box) {
-  // FIXME: Colisão sendo atrevessada quando se está
-  // em primeira pessoa
   TraceResult result;
-  // Com limites, acredito que trás uma melhor
-  // abordagem ao FOV do jogador
   glm::vec3 hsize = moving_box.getHalfSize();
   glm::vec3 expanded_min = static_box.min - hsize;
   glm::vec3 expanded_max = static_box.max + hsize;
-
-  // Caso seja maligno e não queira limites
-  // muhaha >:)
-  //
-  // Warning: Ponto de origem não está se alinhando com
-  // eixos externos
-  // glm::vec3 hsize = moving_box.getSize();
-  // glm::vec3 expanded_min = static_box.min - moving_box.getSize();
-  // glm::vec3 expanded_max = static_box.max;
 
   glm::vec3 ray_dir = end_center - start_center;
   glm::vec3 normal;
@@ -85,42 +67,27 @@ TraceResult sweepAABBABB(const AABB &moving_box, const glm::vec3 &start_center,
     result.t = 0.0f;
 
     glm::vec3 static_center = static_box.getCenter();
-    // Warning: trocar este epsilon por um apropriado,
-    // usando a GLM de preferencia
-    glm::vec3 dir = glm::normalize(start_center - static_center +
-                                   glm::vec3(glm::epsilon<float>()));
+    glm::vec3 dir =
+        glm::normalize(start_center - static_center + glm::vec3(EPS));
 
     result.hit_normal = dir;
-    result.end_pos = static_center;
+    result.end_pos = start_center;
 
-    return result;
-  }
-
-  // Warning: Redundante?????
-  if (glm::length(ray_dir) < glm::epsilon<float>()) {
-    result.hit = false;
-    result.t = 1.0f;
-    result.end_pos = end_center;
     return result;
   }
 
   AABB aabb;
   aabb.min = expanded_min;
   aabb.max = expanded_max;
-  if (!rayAABB(start_center, ray_dir, aabb, t_enter, t_exit, normal)) {
-    result.hit = false;
-    result.t = 1.0f;
-    result.end_pos = end_center;
-    return result;
-  }
 
-  if (t_enter < 0.0f || t_enter > 1.0f) {
+  if ((glm::length(ray_dir) < EPS) ||
+      (!rayAABB(start_center, ray_dir, aabb, t_enter, t_exit, normal)) ||
+      (t_enter < 0.0f || t_enter > 1.0f)) {
     result.hit = false;
     result.t = 1.0f;
     result.end_pos = end_center;
     return result;
   }
-  // Warning EOF
 
   result.hit = true;
   result.t = std::max(0.0f, t_enter);
@@ -146,13 +113,13 @@ TraceResult sweepAABBPlane(const AABB &moving_box,
     result.start_inside = true;
     result.hit = true;
     result.t = 0.0f;
-    result.hit_normal = start_center;
+    result.hit_normal = plane.normal;
     result.end_pos = start_center;
     return result;
   }
 
   f32 denom = start_dist - end_dist;
-  if (std::abs(denom) < glm::epsilon<float>()) {
+  if (std::abs(denom) < EPS) {
     result.hit = false;
     result.t = 1.0f;
     result.end_pos = end_center;
@@ -175,13 +142,61 @@ TraceResult sweepAABBPlane(const AABB &moving_box,
   return result;
 }
 
+bool pointInTriangle(const glm::vec3 &p, const glm::vec3 &a, const glm::vec3 &b,
+                     const glm::vec3 &c) {
+  glm::vec3 v0 = b - a;
+  glm::vec3 v1 = c - a;
+  glm::vec3 v2 = p - a;
+
+  f32 d00 = glm::dot(v0, v0);
+  f32 d01 = glm::dot(v0, v1);
+  f32 d11 = glm::dot(v1, v1);
+  f32 d20 = glm::dot(v2, v0);
+  f32 d21 = glm::dot(v2, v1);
+
+  f32 denom = d00 * d11 - d01 * d01;
+  if (std::abs(denom) < EPS)
+    return false;
+
+  f32 v = (d11 * d20 - d01 * d21) / denom;
+  f32 w = (d00 * d21 - d01 * d20) / denom;
+  f32 u = 1.0f - v - w;
+
+  return (u >= EPS && v >= EPS && w >= EPS);
+}
+
+TraceResult sweepAABBRamp(const AABB &moving_box, const glm::vec3 &start_center,
+                          const glm::vec3 &end_center, const Ramp &ramp) {
+  TraceResult tr =
+      sweepAABBPlane(moving_box, start_center, end_center, ramp.plane);
+  if (!tr.hit) {
+    return tr;
+  }
+
+  glm::vec3 contact_point = tr.end_pos;
+  f32 dist = glm::dot(ramp.plane.normal, contact_point) - ramp.plane.dist;
+  contact_point -= ramp.plane.normal * dist;
+
+  if (!pointInTriangle(contact_point, ramp.v0, ramp.v1, ramp.v2)) {
+    tr.hit = false;
+  }
+
+  return tr;
+}
+
 glm::vec3 clipVelocity(const glm::vec3 &vel, const glm::vec3 &normal,
                        f32 overbounce) {
-  f32 backoff = glm::dot(vel, normal) * overbounce;
+  f32 d = glm::dot(vel, normal);
+
+  if (d > 0.0f) {
+    return vel;
+  }
+
+  f32 backoff = d * overbounce;
   glm::vec3 clipped = vel - normal * backoff;
 
   for (int i = 0; i < 3; i++)
-    if (std::abs(clipped[i]) < glm::epsilon<float>())
+    if (std::abs(clipped[i]) < EPS)
       clipped[i] = 0.0f;
 
   return clipped;
@@ -190,15 +205,23 @@ glm::vec3 clipVelocity(const glm::vec3 &vel, const glm::vec3 &normal,
 MoveResult stepSlideMove(const AABB &moving_box, const glm::vec3 &start_center,
                          glm::vec3 velocity, f32 dt,
                          const std::vector<AABB> &static_boxes,
-                         const std::vector<Plane> &planes, int max_iterations) {
+                         const std::vector<Ramp> &ramps, int max_iterations) {
   glm::vec3 origin = start_center;
   glm::vec3 remain = velocity * dt;
   glm::vec3 dest = origin + remain;
   glm::vec3 new_vel = velocity;
 
-  std::vector<glm::vec3> clip_normals;
+  for (const auto &b : static_boxes) {
+    AABB mb;
+    glm::vec3 hsize = moving_box.getHalfSize();
+    mb.min = origin - hsize;
+    mb.max = origin + hsize;
 
-  bool hit = false;
+    if (mb.max.x < b.min.x || mb.min.x > b.max.x || mb.max.y < b.min.y ||
+        mb.min.y > b.max.y || mb.max.z < b.min.z || mb.min.z > b.max.z) {
+      resolvePenetrationBox(mb, origin, b);
+    }
+  }
 
   for (int i = 0; i < max_iterations; i++) {
     TraceResult earliest;
@@ -212,13 +235,25 @@ MoveResult stepSlideMove(const AABB &moving_box, const glm::vec3 &start_center,
         earliest = result;
     }
 
-    // Planes
-    for (const auto &p : planes) {
-      TraceResult result =
-          sweepAABBPlane(moving_box, origin, origin + remain, p);
-      if (result.hit && result.t < earliest.t)
-        earliest = result;
+    // Ramps
+    for (const auto &r : ramps) {
+      TraceResult tr = sweepAABBRamp(moving_box, origin, origin + remain, r);
+      if (tr.hit && tr.t < earliest.t) {
+        LogInfo("Ramp");
+        earliest = tr;
+      } else {
+        LogError("Ramp");
+      }
     }
+
+    // Planes
+    // for (const auto &p : planes) {
+    //   TraceResult result =
+    //       sweepAABBPlane(moving_box, origin, origin + remain, p);
+    //
+    //   if (result.hit && result.t < earliest.t)
+    //     earliest = result;
+    // }
 
     if (!earliest.hit) {
       // free move
@@ -226,30 +261,23 @@ MoveResult stepSlideMove(const AABB &moving_box, const glm::vec3 &start_center,
       break;
     }
 
-    // Warning: ja sabe... né?
-    f32 move_t = std::max(0.0f, earliest.t - glm::epsilon<float>());
+    f32 move_t = std::max(0.0f, earliest.t - EPS);
     origin += remain * move_t;
-
-    clip_normals.push_back(earliest.hit_normal);
 
     f32 used = earliest.t;
     f32 remaining_fraction = 1.0f - used;
-    remain = remain * (1.0f - used);
+    remain *= remaining_fraction;
 
     new_vel = clipVelocity(new_vel, earliest.hit_normal, 1.01f);
-
     remain = clipVelocity(remain, earliest.hit_normal, 1.01f);
 
-    hit = earliest.hit;
-
-    if (glm::length(remain) < glm::epsilon<float>())
+    if (glm::length(remain) < EPS)
       break;
   }
 
   MoveResult result;
   result.final_center = origin;
   result.final_velocity = new_vel;
-  result.hit = hit;
   return result;
 }
 

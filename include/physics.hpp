@@ -17,6 +17,11 @@ struct Plane {
   f32 dist;
 };
 
+struct Ramp {
+  Plane plane;
+  glm::vec3 v0, v1, v2;
+};
+
 struct TraceResult {
   glm::vec3 hit_normal;
   glm::vec3 end_pos;
@@ -28,7 +33,6 @@ struct TraceResult {
 struct MoveResult {
   glm::vec3 final_center;
   glm::vec3 final_velocity;
-  bool hit;
 };
 
 bool rayAABB(const glm::vec3 &ray_origin, const glm::vec3 &ray_dir,
@@ -44,7 +48,7 @@ glm::vec3 clipVelocity(const glm::vec3 &vel, const glm::vec3 &normal,
 MoveResult stepSlideMove(const AABB &moving_box, const glm::vec3 &start_center,
                          glm::vec3 velocity, f32 dt,
                          const std::vector<AABB> &static_boxes,
-                         const std::vector<Plane> &planes,
+                         const std::vector<Ramp> &ramps,
                          int max_iterations = 4);
 
 void resolvePenetrationBox(AABB &moving_box, glm::vec3 &center,

@@ -11,6 +11,11 @@
 #include "camera.hpp"
 #include "mesh.hpp"
 
+enum ShapeType : u8 {
+  BOX = 0,
+  PLANE,
+};
+
 //
 // MAYBE:
 // separar os formatos por classes
@@ -29,8 +34,9 @@ class Shape : public ShapeInterface {
 
 public:
   Transform m_trans;
+  ShapeType m_type;
 
-  Shape(const glm::vec3 &pos, const glm::vec3 &size);
+  Shape(const glm::vec3 &pos, const glm::vec3 &size, const ShapeType &type = BOX);
   ~Shape();
 
   sshape_buffer_t create(sshape_buffer_t &buf) override {

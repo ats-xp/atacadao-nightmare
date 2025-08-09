@@ -15,11 +15,6 @@
 #include "render.hpp"
 #include "shape.hpp"
 
-struct Collider {
-  Shape *shape;
-  AABB box;
-};
-
 class Game : public State {
   Render m_render;
   Render m_render_bb; // billboard
@@ -34,7 +29,10 @@ class Game : public State {
   std::shared_ptr<Player> m_player;
 
   std::vector<AABB> m_colliders;
+  std::vector<Ramp> m_ramps;
+
   std::vector<Shape *> m_colliders_shape;
+  std::vector<Shape *> m_ramps_shape;
 
   FONScontext *m_font_ctx;
   int m_font_normal;
