@@ -233,6 +233,7 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
 
       Texture tex;
       stbi_set_flip_vertically_on_load(true);
+      // tex.attrib(SG_FILTER_NEAREST, SG_FILTER_NEAREST, SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
       tex.load(filename.c_str(), (TextureType)tex_type);
       tex.attrib();
 

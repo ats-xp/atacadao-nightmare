@@ -39,65 +39,28 @@ Game::Game() {
     sfetch_setup(&desc);
   }
 
+  initPhysX();
+
+  physx::PxU32 nb_actors =
+      m_scene->getNbActors(physx::PxActorTypeFlag::eRIGID_DYNAMIC);
+  m_actors.resize(nb_actors);
+  m_scene->getActors(physx::PxActorTypeFlag::eRIGID_DYNAMIC,
+                     reinterpret_cast<physx::PxActor **>(m_actors.data()),
+                     nb_actors);
+
   m_cam = std::make_shared<Camera>(glm::vec3(-12.861005, 1.293806, 0.921208));
   m_cam->setViewport(sapp_widthf(), sapp_heightf());
 
   initPipeline();
 
-  {
-    for (int i = 0; i < 2; i++) {
-      glm::vec3 pos[2] = {
-          glm::vec3(0.0f),
-          glm::vec3(-4.0f, 0.0f, -1.0f),
-      };
-
-      m_colliders_shape.push_back(new Shape(pos[i], glm::vec3(1.0f)));
-
-      AABB c;
-      c.min = (pos[i] - 1.0f);
-      c.max = (pos[i] + 1.0f);
-      m_colliders.push_back(c);
-    }
-  }
-
-  {
-    Ramp ramp;
-
-    glm::vec3 offset(2.0f, -1.0f, 2.0f);
-
-    ramp.v0 = glm::vec3(-1.0f, 0.0f, 0.0f);
-    ramp.v1 = glm::vec3(1.0f, 0.0f, 0.0f);
-    ramp.v2 = glm::vec3(1.0f, 1.0f, 2.0f);
-
-    ramp.v0 += offset;
-    ramp.v1 += offset;
-    ramp.v2 += offset;
-
-    glm::vec3 center = (ramp.v0 + ramp.v1 + ramp.v2) / 3.0f;
-
-    f32 scale = 4.0f;
-    ramp.v0 = center + (ramp.v0 - center) * scale;
-    ramp.v1 = center + (ramp.v1 - center) * scale;
-    ramp.v2 = center + (ramp.v2 - center) * scale;
-
-    glm::vec3 e1 = ramp.v1 - ramp.v0;
-    glm::vec3 e2 = ramp.v2 - ramp.v0;
-    glm::vec3 n = glm::normalize(glm::cross(e1, e2));
-
-    ramp.plane.normal = n;
-    ramp.plane.dist = glm::dot(n, ramp.v0);
-
-    m_ramps.push_back(ramp);
-    m_ramps_shape.push_back(new Shape(n, glm::vec3(1.0f), ShapeType::PLANE));
-  }
-
   m_player = std::make_shared<Player>(glm::vec3(-4.0f, 0.0f, 4.0f));
 
   m_boards[0] = new Billboard("assets/tree.png");
-  m_boards[0]->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-
   m_boards[1] = new Billboard("assets/bayo.png");
-  m_boards[1]->setPosition(glm::vec3(-4.0f, 0.0f, -1.0f));
+
+  Transform trans;
+  addModelStore(m_mdl_store,
+                new Model("assets/models/deku_tree/greatdekutree.obj"), trans);
 
   LogInfo("Game created");
 }
@@ -106,6 +69,8 @@ Game::~Game() {
   for (Billboard *b : m_boards) {
     delete b;
   }
+
+  shutdownPhysX();
 
   sfons_destroy(m_font_ctx);
 
@@ -116,15 +81,26 @@ Game::~Game() {
 
 void Game::update(f32 dt, Input &inp) {
   sfetch_dowork();
+  stepSimulation(dt);
+
+  {
+    physx::PxRigidDynamic *box = m_actors[0]->is<physx::PxRigidDynamic>();
+    physx::PxTransform pose = box->getGlobalPose();
+    m_boards[0]->m_pos.x = pose.p.x;
+    m_boards[0]->m_pos.y = pose.p.y - 1.0f;
+    m_boards[0]->m_pos.z = pose.p.z;
+  }
+
+  {
+    physx::PxRigidDynamic *box = m_actors[1]->is<physx::PxRigidDynamic>();
+    physx::PxTransform pose = box->getGlobalPose();
+    m_boards[1]->m_pos.x = pose.p.x;
+    m_boards[1]->m_pos.y = pose.p.y - 1.0f;
+    m_boards[1]->m_pos.z = pose.p.z;
+    box->setLinearVelocity(physx::PxVec3(1.0f, box->getLinearVelocity().y, 0.0f));
+  }
 
   m_player->input(inp);
-
-  MoveResult r = stepSlideMove(m_player->m_collider, m_player->m_pos,
-                               m_player->m_vel, dt, m_colliders, m_ramps);
-
-  m_player->m_pos = r.final_center;
-  m_player->m_vel = r.final_velocity;
-
   m_player->update(dt);
 }
 
@@ -150,55 +126,14 @@ void Game::render() {
   m_render.use();
   {
     m_player->draw(*m_cam);
+
+    drawModelStore(m_mdl_store, *m_cam);
   }
 
   // All 3D-Debug Render
   m_render_sp.use();
   {
     m_player->drawDebug(*m_cam);
-
-    for (size_t i = 0; i < m_colliders_shape.size(); i++) {
-      auto &s = m_colliders_shape.at(i);
-      auto &c = m_colliders.at(i);
-
-      glm::mat4 m_model = glm::mat4(1.0f);
-
-      glm::vec3 size = c.getSize();
-      glm::vec3 center = c.getCenter();
-
-      m_model = glm::translate(m_model, center);
-      m_model = glm::scale(m_model, size);
-
-      s->bind();
-
-      vs_params_shape_t vs_params = {};
-      vs_params.mvp = m_cam->getMatrix() * m_model;
-      sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
-      s->draw(*m_cam);
-    }
-
-    for (size_t i = 0; i < m_ramps_shape.size(); i++) {
-      auto &s = m_ramps_shape.at(i);
-      auto &r = m_ramps.at(i);
-
-      glm::vec3 center = (r.v0 + r.v1 + r.v2) / 3.0f;
-
-      // glm::vec3 min = glm::min(glm::min(r.v0, r.v1), r.v2);
-      // glm::vec3 max = glm::max(glm::max(r.v0, r.v1), r.v2);
-
-      glm::vec3 size = glm::vec3(2.0f);
-
-      glm::mat4 m_model = glm::mat4(1.0f);
-      m_model = glm::translate(m_model, center);
-      m_model = glm::scale(m_model, size);
-
-      s->bind();
-
-      vs_params_shape_t vs_params = {};
-      vs_params.mvp = m_cam->getMatrix() * m_model;
-      sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
-      s->draw(*m_cam);
-    }
   }
 
   m_render_bb.use();
@@ -221,9 +156,113 @@ void Game::handleEvent(const sapp_event *e) {
   }
 }
 
+void Game::initPhysX() {
+  m_foundation =
+      PxCreateFoundation(PX_PHYSICS_VERSION, m_allocator, m_error_callback);
+  if (!m_foundation) {
+    LogError("PxFoundation Failed");
+    abort();
+  }
+
+  physx::PxTolerancesScale scale;
+  bool record_memory_alloc = true;
+
+  m_physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_foundation, scale,
+                              record_memory_alloc);
+  if (!m_physics) {
+    LogError("PxPhysics Failed");
+    abort();
+  }
+
+  physx::PxSceneDesc scene_desc(m_physics->getTolerancesScale());
+  scene_desc.gravity = physx::PxVec3(0.0f, -9.81f, 0.0f);
+
+  m_dispatcher = physx::PxDefaultCpuDispatcherCreate(2);
+  scene_desc.cpuDispatcher = m_dispatcher;
+  scene_desc.filterShader = physx::PxDefaultSimulationFilterShader;
+
+  m_scene = m_physics->createScene(scene_desc);
+  if (!m_scene) {
+    LogError("PxScene Failed");
+    abort();
+  }
+
+  m_material = m_physics->createMaterial(0.5f, 0.5f, 0.6f);
+  if (!m_material) {
+    LogError("PxMaterial Failed");
+    abort();
+  }
+
+  physx::PxRigidStatic *ground =
+      physx::PxCreatePlane(*m_physics, physx::PxPlane(0, 1, 0, 0), *m_material);
+  m_scene->addActor(*ground);
+
+  {
+    physx::PxTransform t(physx::PxVec3(0.0f, 0.0f, 0.0f));
+    physx::PxBoxGeometry geom(physx::PxVec3(0.5f, 0.5f, 0.5f));
+
+    f32 density = 10.0f;
+
+    physx::PxRigidDynamic *box =
+        physx::PxCreateDynamic(*m_physics, t, geom, *m_material, density);
+    box->setAngularDamping(0.5f);
+    // box->setLinearVelocity(physx::PxVec3(1.0f, 0.0f, 0.0f));
+    m_scene->addActor(*box);
+  }
+
+  {
+    physx::PxTransform t(physx::PxVec3(-4.0f, 0.0f, -1.0f));
+    physx::PxBoxGeometry geom(physx::PxVec3(0.5f, 0.5f, 0.5f));
+
+    f32 density = 10.0f;
+
+    physx::PxRigidDynamic *box =
+        physx::PxCreateDynamic(*m_physics, t, geom, *m_material, density);
+    box->setAngularDamping(0.5f);
+    m_scene->addActor(*box);
+  }
+}
+
+void Game::stepSimulation(f32 dt) {
+  m_scene->simulate(dt);
+  m_scene->fetchResults(true);
+}
+
+void Game::shutdownPhysX() {
+  if (m_scene) {
+    m_scene->release();
+    m_scene = nullptr;
+  }
+
+  if (m_dispatcher) {
+    m_dispatcher->release();
+    m_dispatcher = nullptr;
+  }
+
+  if (m_physics) {
+    m_physics->release();
+    m_physics = nullptr;
+  }
+
+  if (m_foundation) {
+    m_foundation->release();
+    m_foundation = nullptr;
+  }
+}
+
 void Game::initPipeline() {
   {
     sg_pipeline_desc desc = {};
+
+    sg_blend_state blend_state = {};
+    blend_state.enabled = true;
+    blend_state.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA;
+    blend_state.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    blend_state.src_factor_alpha = SG_BLENDFACTOR_ZERO;
+    blend_state.dst_factor_alpha = SG_BLENDFACTOR_ONE;
+
+    desc.colors[0].blend = blend_state;
+
     desc.layout.buffers[0].stride = sizeof(Vertex);
     desc.layout.attrs[ATTR_default_apos].format = SG_VERTEXFORMAT_FLOAT3;
     desc.layout.attrs[ATTR_default_anormal].format = SG_VERTEXFORMAT_FLOAT3;

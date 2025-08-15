@@ -49,7 +49,10 @@ Shape::Shape(const glm::vec3 &pos, const glm::vec3 &size,
   m_ebo = sg_make_buffer(&idesc);
 }
 
-Shape::~Shape() {}
+Shape::~Shape() {
+  sg_destroy_buffer(m_ebo);
+  sg_destroy_buffer(m_vbo);
+}
 
 void Shape::draw(Camera &cam) {
   // bind ...

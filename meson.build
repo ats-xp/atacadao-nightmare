@@ -9,6 +9,7 @@ project(
 cc = meson.get_compiler('cpp')
 
 glm_lib_dir = meson.current_source_dir() + '/vendor/glm/build/glm'
+physx_lib_dir = meson.current_source_dir() + '/vendor/PhysX/physx/bin/linux.x86_64/checked'
 
 dependencies = [
   dependency('x11'),
@@ -19,7 +20,26 @@ dependencies = [
   dependency('assimp'),
 
   cc.find_library('glm', dirs : glm_lib_dir),
+
+  cc.find_library('PhysXCharacterKinematic_static_64', dirs : physx_lib_dir),
+  cc.find_library('PhysXCommon_static_64', dirs : physx_lib_dir),
+  cc.find_library('PhysXCooking_static_64', dirs : physx_lib_dir),
+  cc.find_library('PhysXExtensions_static_64', dirs : physx_lib_dir),
+  cc.find_library('PhysXFoundation_static_64', dirs : physx_lib_dir),
+  cc.find_library('PhysXPvdSDK_static_64', dirs : physx_lib_dir),
+  cc.find_library('PhysX_static_64', dirs : physx_lib_dir),
+  cc.find_library('PhysXVehicle2_static_64', dirs : physx_lib_dir),
 ]
+
+inc = []
+inc += include_directories('include')
+inc += include_directories('vendor/sokol')
+inc += include_directories('vendor/sokol/util')
+inc += include_directories('vendor/fontstash/src')
+inc += include_directories('vendor/base')
+inc += include_directories('vendor/glm/glm/')
+inc += include_directories('vendor/stb')
+inc += include_directories('vendor/PhysX/physx/include')
 
 sokol_shdc = find_program('sokol-shdc', 'vendor/sokol-tools-bin/bin/linux', required: true)
 shd = []
@@ -49,15 +69,6 @@ endif
 subdir('source')
 
 src_dir += shd
-
-inc = []
-inc += include_directories('include')
-inc += include_directories('vendor/sokol')
-inc += include_directories('vendor/sokol/util')
-inc += include_directories('vendor/fontstash/src')
-inc += include_directories('vendor/base')
-inc += include_directories('vendor/glm/glm/')
-inc += include_directories('vendor/stb')
 
 exe = executable(
   'atacadao',

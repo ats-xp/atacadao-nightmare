@@ -16,3 +16,6 @@
 [submodule "vendor/sokol-tools-bin"]
 	path = vendor/sokol-tools-bin
 	url = https://github.com/floooh/sokol-tools-bin.git
+[submodule "vendor/PhysX"]
+	path = vendor/PhysX
+	url = https://github.com/NVIDIA-Omniverse/PhysX.git

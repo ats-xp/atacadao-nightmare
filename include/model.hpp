@@ -2,8 +2,6 @@
 
 #include "mesh.hpp"
 
-#include "physics.hpp"
-
 #include <assimp/scene.h>
 
 class Model {

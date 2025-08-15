@@ -27,6 +27,11 @@ in vec2 tex_coords;
 out vec4 FragColor;
 
 void main() {
+  vec4 tex_color = texture(sampler2D(tex, smp), tex_coords);
+
+  if (tex_color.a < 0.1)
+    discard;
+
   FragColor = texture(sampler2D(tex, smp), tex_coords);
   // FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 }

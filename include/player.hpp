@@ -7,7 +7,6 @@
 #include "shape.hpp"
 #include "input.hpp"
 #include "model.hpp"
-#include "physics.hpp"
 
 class Player {
 public:
@@ -19,9 +18,6 @@ public:
   glm::vec3 m_pos;
   glm::vec3 m_vel;
   f32 m_speed;
-
-  Shape *m_collider_shape;
-  AABB m_collider;
 
   Player(const glm::vec3 &pos);
   ~Player();

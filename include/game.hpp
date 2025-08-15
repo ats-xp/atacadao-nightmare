@@ -5,6 +5,8 @@
 #include "state.hpp"
 
 #include "base.h"
+#undef S
+#include <PxPhysicsAPI.h>
 
 #include "fontstash.h"
 
@@ -28,17 +30,27 @@ class Game : public State {
   std::shared_ptr<Camera> m_cam;
   std::shared_ptr<Player> m_player;
 
-  std::vector<AABB> m_colliders;
-  std::vector<Ramp> m_ramps;
-
-  std::vector<Shape *> m_colliders_shape;
-  std::vector<Shape *> m_ramps_shape;
-
   FONScontext *m_font_ctx;
   int m_font_normal;
 
   f32 m_mouse_x = 0;
   f32 m_mouse_y = 0;
+
+  physx::PxDefaultAllocator m_allocator;
+  physx::PxDefaultErrorCallback m_error_callback;
+  physx::PxFoundation *m_foundation = nullptr;
+  physx::PxPhysics *m_physics = nullptr;
+  physx::PxDefaultCpuDispatcher *m_dispatcher = nullptr;
+  physx::PxScene *m_scene = nullptr;
+  physx::PxMaterial *m_material = nullptr;
+
+  std::vector<physx::PxRigidActor*> m_actors;
+
+  // physx::PxPvd *m_pvd = nullptr;
+
+  void initPhysX();
+  void stepSimulation(f32 dt);
+  void shutdownPhysX();
 
   void initPipeline();
 

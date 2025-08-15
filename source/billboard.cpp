@@ -42,7 +42,7 @@ void Billboard::draw(Camera &cam) {
   vs_billboard_params_t vs_params = {};
   vs_params.proj = cam.getProjectionMatrix();
   vs_params.view = cam.getViewMatrix();
-  vs_params.center = m_position;
+  vs_params.center = m_pos;
 
   m_mesh->bind(IMG_tex, SMP_smp);
 
