@@ -78,33 +78,15 @@ void Model::init(const char *path) {
 void Model::draw(Camera &cam) {
   glm::mat4 model = glm::mat4(1.0f);
   model = glm::translate(model, m_transformition.position);
-  // model = glm::scale(model, m_scale);
-  // model = glm::rotate(model, glm::radians(m_rotation), m_axis);
 
   vs_params_t vs_params = {};
   vs_params.mvp = cam.getMatrix() * model;
 
-  // 11.807526  -- class
-  // 9.103988   -- struct
-  // 7.926278 -- alocando/limpando buffer
-  // 1.646011 -- buffer alocado uma vez
-  // u64 start = stm_now();
-
   for (Mesh &m : m_meshes) {
-    if (m.m_textures.size() == 0 || !m.m_textures[0].loaded) {
-      continue;
-    }
-
     m.bind(IMG_tex, SMP_smp);
-
     sg_apply_uniforms(UB_vs_params, SG_RANGE_REF(vs_params));
-
     m.draw();
   }
-
-  // u64 elapsed = stm_since(start);
-  // LogInfo("%lf", stm_ms(elapsed));
-  // abort();
 }
 
 void Model::processNode(aiNode *node, const aiScene *scene) {
@@ -125,6 +107,7 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
   std::vector<Vertex> vertices;
   std::vector<u16> indices;
   std::vector<Texture> textures;
+  std::vector<std::string> textures_id;
 
   for (i = 0; i < mesh->mNumVertices; i++) {
     Vertex vertex;
@@ -168,123 +151,38 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
 
   aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
 
-  std::vector<Texture> diffuse_maps =
+  std::vector<std::string> diffuse_maps =
       loadMaterialTextures(material, aiTextureType_DIFFUSE, DIFFUSE);
-  textures.insert(textures.end(), diffuse_maps.begin(), diffuse_maps.end());
+  textures_id.insert(textures_id.end(), diffuse_maps.begin(), diffuse_maps.end());
 
-  std::vector<Texture> specular_maps =
-      loadMaterialTextures(material, aiTextureType_SPECULAR, SPECULAR);
-  textures.insert(textures.end(), specular_maps.begin(), specular_maps.end());
+  // std::vector<Texture> specular_maps =
+  //     loadMaterialTextures(material, aiTextureType_SPECULAR, SPECULAR);
+  // textures.insert(textures.end(), specular_maps.begin(),
+  // specular_maps.end());
+  //
+  // std::vector<Texture> normal_maps =
+  //     loadMaterialTextures(material, aiTextureType_HEIGHT, NORMAL);
+  // textures.insert(textures.end(), normal_maps.begin(), normal_maps.end());
+  //
+  // std::vector<Texture> height_maps =
+  //     loadMaterialTextures(material, aiTextureType_AMBIENT, HEIGHT);
+  // textures.insert(textures.end(), height_maps.begin(), height_maps.end());
 
-  std::vector<Texture> normal_maps =
-      loadMaterialTextures(material, aiTextureType_HEIGHT, NORMAL);
-  textures.insert(textures.end(), normal_maps.begin(), normal_maps.end());
-
-  std::vector<Texture> height_maps =
-      loadMaterialTextures(material, aiTextureType_AMBIENT, HEIGHT);
-  textures.insert(textures.end(), height_maps.begin(), height_maps.end());
-
-  return Mesh(vertices, indices, textures);
+  return Mesh(vertices, indices, textures_id);
 }
 
-std::vector<Texture>
+std::vector<std::string>
 Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
-  std::vector<Texture> textures;
+  std::vector<std::string> ids;
 
   for (u32 i = 0; i < mat->GetTextureCount(type); i++) {
     aiString str;
     mat->GetTexture(type, i, &str);
 
-    bool skip = false;
+    Texture &tex = getTextureFromID(getTextureIDFromPath(str.C_Str()));
 
-    for (Texture &t : texture_pool) {
-      if (strcmp(t.path.data(), str.C_Str()) == 0) {
-        skip = true;
-        textures.push_back(t);
-        break;
-      }
-    }
-
-    // for (size_t j = 0; j < m_textures_loaded.size(); j++) {
-    //   Texture &t = m_textures_loaded.at(j);
-    //
-    //   if (strcmp(t.path.data(), str.C_Str()) == 0) {
-    //     textures.push_back(t);
-    //     skip = true;
-    //     break;
-    //   }
-    // }
-
-    if (!skip) {
-      std::string filename = getTexturePath(str.C_Str());
-      Texture t;
-
-      // sfetch_request_t desc = {};
-      // desc.path = filename.c_str();
-      // desc.callback = fn;
-      // desc.buffer = SFETCH_RANGE(io_texture_buffer);
-      // sfetch_send(&desc);
-      //
-      // for (Texture &t : texture_pool) {
-      //   if (strcmp(t.path.data(), str.C_Str()) == 0 && t.loaded) {
-      //     textures.push_back(t);
-      //   }
-      // }
-
-      Texture tex;
-      stbi_set_flip_vertically_on_load(true);
-      // tex.attrib(SG_FILTER_NEAREST, SG_FILTER_NEAREST, SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
-      tex.load(filename.c_str(), (TextureType)tex_type);
-      tex.attrib();
-
-      if (tex.loaded) {
-        texture_pool.push_back(tex);
-        textures.push_back(tex);
-      }
-
-      // m_textures_loaded.push_back(tex);
-    }
+    ids.push_back(tex.path);
   }
 
-  return textures;
-}
-
-void addModelStore(ModelStore &store, Model *model, const Transform &trans) {
-  model->setPos(trans.position);
-
-  store.models.push_back(model);
-  store.transforms.push_back(trans);
-}
-
-void updateModelStore(ModelStore &store) {
-  size_t i;
-  for (i = 0; i < store.models.size(); i++) {
-    Model *m = store.models.at(i);
-    Transform &t = store.transforms.at(i);
-
-    // m->m_collider.setPosition(t.position);
-    m->setTransformitions(t);
-  }
-}
-
-void drawModelStore(ModelStore &store, Camera &cam) {
-  size_t i;
-  for (i = 0; i < store.models.size(); i++) {
-    Model *m = store.models.at(i);
-    m->draw(cam);
-  }
-}
-
-static void fecthTextureCallback(const sfetch_response_t *response) {
-  if (response->fetched) {
-
-    Texture tex;
-    stbi_set_flip_vertically_on_load(true);
-    tex.load(response->path);
-    tex.attrib();
-
-    if (tex.loaded) {
-      texture_pool.push_back(tex);
-    }
-  }
+  return ids;
 }

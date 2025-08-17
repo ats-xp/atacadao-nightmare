@@ -115,6 +115,10 @@ static void frame() {
 }
 
 static void handleInput(const sapp_event *e) {
+#define SET_KEY(btn, key)                                                      \
+  if (e->key_code == (key))                                                    \
+    inp.btn = btn_down;
+
   Input &inp = state.input;
 
   state.st->handleEvent(e);
@@ -122,24 +126,14 @@ static void handleInput(const sapp_event *e) {
   if (e->type == SAPP_EVENTTYPE_KEY_DOWN || e->type == SAPP_EVENTTYPE_KEY_UP) {
     bool btn_down = e->type == SAPP_EVENTTYPE_KEY_DOWN;
 
-    if (e->key_code == SAPP_KEYCODE_Z)
-      inp.action = btn_down;
+    SET_KEY(action, SAPP_KEYCODE_Z);
 
-    if (e->key_code == SAPP_KEYCODE_W)
-      inp.up = btn_down;
-    else if (e->key_code == SAPP_KEYCODE_S)
-      inp.down = btn_down;
+    SET_KEY(up, SAPP_KEYCODE_W);
+    SET_KEY(down, SAPP_KEYCODE_S);
+    SET_KEY(left, SAPP_KEYCODE_A);
+    SET_KEY(right, SAPP_KEYCODE_D);
 
-    if (e->key_code == SAPP_KEYCODE_A)
-      inp.left = btn_down;
-    else if (e->key_code == SAPP_KEYCODE_D)
-      inp.right = btn_down;
-
-    
-    if (e->key_code == SAPP_KEYCODE_N)
-      inp.inc = btn_down;
-    else if (e->key_code == SAPP_KEYCODE_M)
-      inp.dec = btn_down;
+    SET_KEY(b, SAPP_KEYCODE_B);
 
     if (e->key_repeat)
       return;

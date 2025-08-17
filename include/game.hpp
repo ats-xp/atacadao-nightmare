@@ -22,9 +22,9 @@ class Game : public State {
   Render m_render_bb; // billboard
   Render m_render_sp; // Shape
 
-  ModelStore m_mdl_store;
   f32 rot = 0.0f;
 
+  Model *m_deku_tree;
   std::array<Billboard *, 2> m_boards;
 
   std::shared_ptr<Camera> m_cam;

@@ -2,6 +2,7 @@
 
 struct Input {
   bool action;
+  bool b;
 
   bool up;
   bool down;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -41,18 +42,14 @@ struct Vertex {
 
 struct Texture {
   std::string path;
-  u32 id;
+  sg_image img;
   sg_sampler smp;
   TextureType type;
 
-  bool loaded;
-
-  void load(const char *filename, TextureType tex_type = DIFFUSE);
-  void attrib(const sg_filter &min_filter = SG_FILTER_LINEAR,
-              const sg_filter &max_filter = SG_FILTER_LINEAR,
-              const sg_wrap &wrap_s = SG_WRAP_REPEAT,
-              const sg_wrap &wrap_t = SG_WRAP_REPEAT);
-  void destroy();
+  constexpr void destroy() {
+    sg_destroy_sampler(smp);
+    sg_destroy_image(img);
+  }
 };
 
 extern std::vector<Texture> texture_pool;
@@ -63,12 +60,13 @@ public:
   std::vector<Vertex> m_vertices;
   std::vector<u16> m_indices;
   std::vector<Texture> m_textures;
+  std::vector<std::string> m_textures_path;
 
   sg_buffer m_vbo;
   sg_buffer m_ebo;
 
   Mesh(std::vector<Vertex> vertices, std::vector<u16> indices,
-       std::vector<Texture> textures);
+       std::vector<std::string> textures_path);
   Mesh(const Mesh &other);
   Mesh &operator=(const Mesh &other);
 
@@ -82,3 +80,17 @@ public:
 
   void bind(u16 img, u16 smp);
 };
+
+void initTextures();
+Texture loadTexture(const char *filename, TextureType tex_type = DIFFUSE);
+void addTexture(const char *path);
+
+void setTextureFilter(sg_filter min, sg_filter max);
+void setTextureWrap(sg_wrap u, sg_wrap v);
+void setTextureVerticalFlip(bool flip);
+
+const std::string getTextureIDFromPath(const std::string &path);
+Texture &getTextureFromID(const std::string &id);
+
+bool isTexture(const std::string &id);
+void destroyTexture(std::string id); // Warning: inutil

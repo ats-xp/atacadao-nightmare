@@ -14,16 +14,26 @@
 std::vector<Texture> texture_pool;
 u8 io_texture_buffer[256 * 1024];
 
-void Texture::load(const char *filename, TextureType tex_type) {
-  std::string f = std::string(filename);
-  path = f.substr(f.find_last_of("/") + 1).c_str();
+static struct {
+  std::map<std::string, Texture> hash;
 
-  type = tex_type;
+  sg_filter min_filter : SG_FILTER_LINEAR;
+  sg_filter max_filter : SG_FILTER_LINEAR;
+
+  sg_wrap wrap_u : SG_WRAP_REPEAT;
+  sg_wrap wrap_v : SG_WRAP_REPEAT;
+
+} texture_info;
+
+Texture loadTexture(const char *filename, TextureType tex_type) {
+  Texture t = {};
+  std::string f = std::string(filename);
+  t.path = f.substr(f.find_last_of("/") + 1).c_str();
+
+  t.type = tex_type;
 
   int w, h, nch;
   stbi_uc *data = stbi_load(filename, &w, &h, &nch, 4);
-
-  sg_image img = {};
 
   if (data) {
     LogInfo("Loading texture: %s", filename);
@@ -36,41 +46,81 @@ void Texture::load(const char *filename, TextureType tex_type) {
     desc.data.subimage[0][0].ptr = data;
     desc.data.subimage[0][0].size = w * h * 4;
 
-    img = sg_make_image(&desc);
+    t.img = sg_make_image(&desc);
 
-    loaded = true;
+    // loaded = true;
   } else {
-    img.id = 0;
     LogError("Texture loading error %s file: %s", stbi_failure_reason(),
              filename);
   }
 
-  id = img.id;
+  sg_sampler_desc desc = {};
+  desc.min_filter = texture_info.min_filter;
+  desc.mag_filter = texture_info.max_filter;
+  desc.wrap_u = texture_info.wrap_u;
+  desc.wrap_v = texture_info.wrap_v;
+  t.smp = sg_make_sampler(&desc);
 
   stbi_image_free(data);
+
+  return t;
 }
 
-void Texture::attrib(const sg_filter &min_filter, const sg_filter &max_filter,
-                     const sg_wrap &wrap_s, const sg_wrap &wrap_t) {
+void initTextures() { addTexture("assets/default.png"); }
 
-  sg_sampler_desc desc = {};
-  desc.min_filter = min_filter;
-  desc.mag_filter = max_filter;
-  desc.wrap_u = wrap_s;
-  desc.wrap_v = wrap_t;
-  smp = sg_make_sampler(&desc);
+void setTextureFilter(sg_filter min, sg_filter max) {
+  texture_info.min_filter = min;
+  texture_info.max_filter = max;
 }
 
-void Texture::destroy() {
-  sg_image img = {};
-  img.id = id;
-  sg_destroy_sampler(smp);
-  sg_destroy_image(img);
+void setTextureWrap(sg_wrap u, sg_wrap v) {
+  texture_info.wrap_u = u;
+  texture_info.wrap_v = v;
+}
+
+void setTextureVerticalFlip(bool flip) {
+  stbi_set_flip_vertically_on_load(flip);
+}
+
+void addTexture(const char *path) {
+  Texture tex = loadTexture(path);
+
+  std::string id = getTextureIDFromPath(path);
+  texture_info.hash.insert({id, tex});
+}
+
+const std::string getTextureIDFromPath(const std::string &path) {
+  std::string id = path;
+  id = id.substr(id.find_last_of("/") + 1);
+  id = id.substr(0, id.find_first_of(".png"));
+  // id = id.substr(0, id.find_first_of(".bmp"));
+
+  // LogInfo("antes: %s depois: %s", path.c_str(), id.c_str());
+
+  return id;
+}
+
+Texture &getTextureFromID(const std::string &id) {
+  if (!texture_info.hash.contains(id)) {
+    LogError("Texture ID not founded in hash map: %s", id.c_str());
+    return texture_info.hash.at("default");
+  }
+  return texture_info.hash.at(id);
+}
+
+bool isTexture(const std::string &id) { 
+  return texture_info.hash.contains(id);
+}
+
+void destroyTexture(std::string id) {
+  Texture &t = texture_info.hash.at(id);
+  t.destroy();
+  texture_info.hash.erase(id);
 }
 
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<u16> indices,
-           std::vector<Texture> textures)
-    : m_vertices(vertices), m_indices(indices), m_textures(textures) {
+           std::vector<std::string> textures_path)
+    : m_vertices(vertices), m_indices(indices), m_textures_path(textures_path) {
   assert(m_vertices.size() != 0);
 
   sg_buffer_desc vbuf_desc = {};
@@ -89,13 +139,14 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<u16> indices,
 
 Mesh::Mesh(const Mesh &other)
     : m_vertices(other.m_vertices), m_indices(other.m_indices),
-      m_textures(other.m_textures), m_vbo(other.m_vbo), m_ebo(other.m_ebo) {}
+      m_textures_path(other.m_textures_path), m_vbo(other.m_vbo),
+      m_ebo(other.m_ebo) {}
 
 Mesh &Mesh::operator=(const Mesh &other) {
   Mesh tmp(other);
   std::swap(m_vertices, tmp.m_vertices);
   std::swap(m_indices, tmp.m_indices);
-  std::swap(m_textures, tmp.m_textures);
+  std::swap(m_textures_path, tmp.m_textures_path);
   m_vbo = other.m_vbo;
   m_ebo = other.m_ebo;
   return *this;
@@ -103,13 +154,14 @@ Mesh &Mesh::operator=(const Mesh &other) {
 
 Mesh::Mesh(Mesh &&other) noexcept
     : m_vertices(other.m_vertices), m_indices(other.m_indices),
-      m_textures(other.m_textures), m_vbo(other.m_vbo), m_ebo(other.m_ebo) {}
+      m_textures_path(other.m_textures_path), m_vbo(other.m_vbo),
+      m_ebo(other.m_ebo) {}
 
 Mesh &Mesh::operator=(Mesh &&other) noexcept {
   Mesh tmp(other);
   std::swap(m_vertices, tmp.m_vertices);
   std::swap(m_indices, tmp.m_indices);
-  std::swap(m_textures, tmp.m_textures);
+  std::swap(m_textures_path, tmp.m_textures_path);
   m_vbo = other.m_vbo;
   m_ebo = other.m_ebo;
   return *this;
@@ -133,8 +185,9 @@ void Mesh::bind(u16 img, u16 smp) {
   bind.vertex_buffers[0] = m_vbo;
   bind.index_buffer = m_ebo;
 
-  bind.images[img].id = m_textures[0].id;
-  bind.samplers[smp] = m_textures[0].smp;
+  Texture &t = getTextureFromID(getTextureIDFromPath(m_textures_path[0]));
+  bind.images[img] = t.img;
+  bind.samplers[smp] = t.smp;
 
   sg_apply_bindings(&bind);
 }

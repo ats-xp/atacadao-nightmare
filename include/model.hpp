@@ -18,8 +18,8 @@ class Model {
   void processNode(aiNode *node, const aiScene *scene);
   Mesh processMesh(aiMesh *mesh, const aiScene *scene);
 
-  std::vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type,
-                                            u8 tex_type);
+  std::vector<std::string>
+  loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type);
 
   constexpr std::string getTexturePath(const char *path) {
     return std::string(m_directory + "/" + path);
@@ -73,12 +73,3 @@ public:
 
   constexpr std::vector<Mesh> getMeshes() const { return m_meshes; }
 };
-
-struct ModelStore {
-  std::vector<Model *> models;
-  std::vector<Transform> transforms;
-};
-
-void addModelStore(ModelStore &store, Model *model, const Transform &trans);
-void updateModelStore(ModelStore &store);
-void drawModelStore(ModelStore &store, Camera &cam);

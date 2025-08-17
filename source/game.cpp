@@ -14,6 +14,8 @@
 #include "sokol_fontstash.h"
 #include "sokol_gl.h"
 
+#include "physx_utils.hpp"
+
 #include "billboard.glsl.h"
 #include "default.glsl.h"
 #include "shape.glsl.h"
@@ -40,6 +42,37 @@ Game::Game() {
   }
 
   initPhysX();
+  initPipeline();
+  initTextures();
+
+  setTextureVerticalFlip(true);
+  addTexture("assets/models/Beat/Beat.png");
+
+  addTexture("assets/models/deku_tree/leaves.png");
+  addTexture("assets/models/deku_tree/road.png");
+  addTexture("assets/models/deku_tree/treestop.png");
+  addTexture("assets/models/deku_tree/treesbottom.png");
+  addTexture("assets/models/deku_tree/vines.png");
+  addTexture("assets/models/deku_tree/Road end.png");
+  addTexture("assets/models/deku_tree/mustache and eyebrows.png");
+  addTexture("assets/models/deku_tree/deku tree skin.png");
+  addTexture("assets/models/deku_tree/ground.png");
+  addTexture("assets/models/deku_tree/Wall.png");
+
+  setTextureVerticalFlip(false);
+  addTexture("assets/tree.png");
+  addTexture("assets/bayo.png");
+
+  m_cam = std::make_shared<Camera>(glm::vec3(-12.861005, 1.293806, 0.921208));
+  m_cam->setViewport(sapp_widthf(), sapp_heightf());
+
+  m_player = std::make_shared<Player>(glm::vec3(-4.0f, 0.0f, 4.0f));
+  m_player->initPhysics(m_physics, m_material, m_scene);
+
+  m_boards[0] = new Billboard("assets/tree.png");
+  m_boards[1] = new Billboard("assets/bayo.png");
+
+  m_deku_tree = new Model("assets/models/deku_tree/greatdekutree.obj");
 
   physx::PxU32 nb_actors =
       m_scene->getNbActors(physx::PxActorTypeFlag::eRIGID_DYNAMIC);
@@ -48,20 +81,6 @@ Game::Game() {
                      reinterpret_cast<physx::PxActor **>(m_actors.data()),
                      nb_actors);
 
-  m_cam = std::make_shared<Camera>(glm::vec3(-12.861005, 1.293806, 0.921208));
-  m_cam->setViewport(sapp_widthf(), sapp_heightf());
-
-  initPipeline();
-
-  m_player = std::make_shared<Player>(glm::vec3(-4.0f, 0.0f, 4.0f));
-
-  m_boards[0] = new Billboard("assets/tree.png");
-  m_boards[1] = new Billboard("assets/bayo.png");
-
-  Transform trans;
-  addModelStore(m_mdl_store,
-                new Model("assets/models/deku_tree/greatdekutree.obj"), trans);
-
   LogInfo("Game created");
 }
 
@@ -69,6 +88,9 @@ Game::~Game() {
   for (Billboard *b : m_boards) {
     delete b;
   }
+
+  m_player.reset();
+  m_player = nullptr;
 
   shutdownPhysX();
 
@@ -83,23 +105,25 @@ void Game::update(f32 dt, Input &inp) {
   sfetch_dowork();
   stepSimulation(dt);
 
+  if (isTexture("bayo") && inp.b) {
+    destroyTexture("bayo");
+  }
+
   {
     physx::PxRigidDynamic *box = m_actors[0]->is<physx::PxRigidDynamic>();
     physx::PxTransform pose = box->getGlobalPose();
-    m_boards[0]->m_pos.x = pose.p.x;
-    m_boards[0]->m_pos.y = pose.p.y - 1.0f;
-    m_boards[0]->m_pos.z = pose.p.z;
+    m_boards[0]->m_pos = pxToGlmVec3(pose.p);
   }
 
   {
     physx::PxRigidDynamic *box = m_actors[1]->is<physx::PxRigidDynamic>();
     physx::PxTransform pose = box->getGlobalPose();
     m_boards[1]->m_pos.x = pose.p.x;
-    m_boards[1]->m_pos.y = pose.p.y - 1.0f;
+    m_boards[1]->m_pos.y = pose.p.y;
     m_boards[1]->m_pos.z = pose.p.z;
-    box->setLinearVelocity(physx::PxVec3(1.0f, box->getLinearVelocity().y, 0.0f));
   }
 
+  m_player->is_ground = m_player->isOnGround(m_scene);
   m_player->input(inp);
   m_player->update(dt);
 }
@@ -126,14 +150,31 @@ void Game::render() {
   m_render.use();
   {
     m_player->draw(*m_cam);
-
-    drawModelStore(m_mdl_store, *m_cam);
+    m_deku_tree->draw(*m_cam);
   }
 
   // All 3D-Debug Render
   m_render_sp.use();
   {
-    m_player->drawDebug(*m_cam);
+    for (physx::PxRigidActor *actor : m_actors) {
+      physx::PxU32 nb_shapes = actor->getNbShapes();
+      std::vector<physx::PxShape *> shapes(nb_shapes);
+      actor->getShapes(shapes.data(), nb_shapes);
+
+      for (physx::PxShape *shape : shapes) {
+        physx::PxTransform local_pose = shape->getLocalPose();
+        physx::PxTransform global_pose = actor->getGlobalPose() * local_pose;
+
+        glm::mat4 model = pxToGlmMat4(global_pose);
+        vs_params_shape_t vs_params = {};
+        vs_params.mvp = m_cam->getMatrix() * model;
+
+        Shape sp(glm::vec3(0.0f));
+        sp.bind();
+        sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
+        sp.draw(*m_cam);
+      }
+    }
   }
 
   m_render_bb.use();
@@ -205,8 +246,14 @@ void Game::initPhysX() {
 
     physx::PxRigidDynamic *box =
         physx::PxCreateDynamic(*m_physics, t, geom, *m_material, density);
-    box->setAngularDamping(0.5f);
-    // box->setLinearVelocity(physx::PxVec3(1.0f, 0.0f, 0.0f));
+
+    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_X,
+                                 true);
+    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y,
+                                 true);
+    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z,
+                                 true);
+
     m_scene->addActor(*box);
   }
 
@@ -218,7 +265,14 @@ void Game::initPhysX() {
 
     physx::PxRigidDynamic *box =
         physx::PxCreateDynamic(*m_physics, t, geom, *m_material, density);
-    box->setAngularDamping(0.5f);
+
+    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_X,
+                                 true);
+    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y,
+                                 true);
+    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z,
+                                 true);
+
     m_scene->addActor(*box);
   }
 }

@@ -36,7 +36,8 @@ public:
   Transform m_trans;
   ShapeType m_type;
 
-  Shape(const glm::vec3 &pos, const glm::vec3 &size, const ShapeType &type = BOX);
+  Shape(const glm::vec3 &pos, const glm::vec3 &size = glm::vec3(0.0f),
+        const ShapeType &type = BOX);
   ~Shape();
 
   sshape_buffer_t create(sshape_buffer_t &buf) override {

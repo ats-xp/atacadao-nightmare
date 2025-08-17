@@ -1,16 +1,22 @@
 #pragma once
 
-#include <memory>
 #include <glm.hpp>
+#include <memory>
 
 #include "camera.hpp"
-#include "shape.hpp"
 #include "input.hpp"
 #include "model.hpp"
+#include "shape.hpp"
+
+#undef S
+#include <PxPhysicsAPI.h>
 
 class Player {
 public:
   Model *m_model;
+  physx::PxRigidDynamic *m_collider;
+  Shape *m_collider_shape;
+  bool is_ground;
 
   glm::vec3 m_cam_front;
   glm::vec3 m_cam_right;
@@ -27,5 +33,10 @@ public:
   void draw(Camera &cam);
   void drawDebug(Camera &cam);
 
-  constexpr void setPos(const glm::vec3 &pos) {m_pos = pos;}
+  void initPhysics(physx::PxPhysics *physics, physx::PxMaterial *material,
+                   physx::PxScene *scene);
+  bool isOnGround(physx::PxScene *scene);
+  void jump(f32 strength);
+
+  constexpr void setPos(const glm::vec3 &pos) { m_pos = pos; }
 };
