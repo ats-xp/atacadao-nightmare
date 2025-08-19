@@ -1,6 +1,5 @@
 /*
  *
- * TODO: Refatorar a Detecção e Resolução de colisões do jogador
  * TODO: Criar uma Classe Entity/GameObject
  *
  */
@@ -35,7 +34,7 @@ Game::Game() {
   {
     sfetch_desc_t desc = {};
     desc.max_requests = 128;
-    desc.num_channels = 2;
+    desc.num_channels = 1;
     desc.num_lanes = 1;
     desc.logger.func = slog_func;
     sfetch_setup(&desc);
@@ -43,36 +42,20 @@ Game::Game() {
 
   initPhysX();
   initPipeline();
+  initTexturePool();
   initTextures();
 
-  setTextureVerticalFlip(true);
-  addTexture("assets/models/Beat/Beat.png");
-
-  addTexture("assets/models/deku_tree/leaves.png");
-  addTexture("assets/models/deku_tree/road.png");
-  addTexture("assets/models/deku_tree/treestop.png");
-  addTexture("assets/models/deku_tree/treesbottom.png");
-  addTexture("assets/models/deku_tree/vines.png");
-  addTexture("assets/models/deku_tree/Road end.png");
-  addTexture("assets/models/deku_tree/mustache and eyebrows.png");
-  addTexture("assets/models/deku_tree/deku tree skin.png");
-  addTexture("assets/models/deku_tree/ground.png");
-  addTexture("assets/models/deku_tree/Wall.png");
-
-  setTextureVerticalFlip(false);
-  addTexture("assets/tree.png");
-  addTexture("assets/bayo.png");
-
-  m_cam = std::make_shared<Camera>(glm::vec3(-12.861005, 1.293806, 0.921208));
-  m_cam->setViewport(sapp_widthf(), sapp_heightf());
-
-  m_player = std::make_shared<Player>(glm::vec3(-4.0f, 0.0f, 4.0f));
-  m_player->initPhysics(m_physics, m_material, m_scene);
+  m_player = new Player(glm::vec3(-4.0f, 0.0f, 4.0f));
+  m_map.init("assets/maps/test/test.obj");
+  m_map.setupPhysics(m_physics, m_scene);
 
   m_boards[0] = new Billboard("assets/tree.png");
   m_boards[1] = new Billboard("assets/bayo.png");
 
-  m_deku_tree = new Model("assets/models/deku_tree/greatdekutree.obj");
+  m_cam.init(glm::vec3(-12.861005, 1.293806, 0.921208));
+  m_cam.setViewport(sapp_widthf(), sapp_heightf());
+
+  m_player->initPhysics(m_physics, m_material, m_scene);
 
   physx::PxU32 nb_actors =
       m_scene->getNbActors(physx::PxActorTypeFlag::eRIGID_DYNAMIC);
@@ -89,8 +72,8 @@ Game::~Game() {
     delete b;
   }
 
-  m_player.reset();
-  m_player = nullptr;
+  delete m_player;
+  m_map.destroy();
 
   shutdownPhysX();
 
@@ -104,10 +87,6 @@ Game::~Game() {
 void Game::update(f32 dt, Input &inp) {
   sfetch_dowork();
   stepSimulation(dt);
-
-  if (isTexture("bayo") && inp.b) {
-    destroyTexture("bayo");
-  }
 
   {
     physx::PxRigidDynamic *box = m_actors[0]->is<physx::PxRigidDynamic>();
@@ -149,8 +128,8 @@ void Game::render() {
   // All 3D Render
   m_render.use();
   {
-    m_player->draw(*m_cam);
-    m_deku_tree->draw(*m_cam);
+    m_player->draw(m_cam);
+    m_map.draw(m_cam);
   }
 
   // All 3D-Debug Render
@@ -167,19 +146,19 @@ void Game::render() {
 
         glm::mat4 model = pxToGlmMat4(global_pose);
         vs_params_shape_t vs_params = {};
-        vs_params.mvp = m_cam->getMatrix() * model;
+        vs_params.mvp = m_cam.getMatrix() * model;
 
         Shape sp(glm::vec3(0.0f));
         sp.bind();
         sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
-        sp.draw(*m_cam);
+        sp.draw(m_cam);
       }
     }
   }
 
   m_render_bb.use();
   for (Billboard *b : m_boards) {
-    b->draw(*m_cam);
+    b->draw(m_cam);
   }
 
   sgl_draw();
@@ -189,7 +168,7 @@ void Game::handleEvent(const sapp_event *e) {
   if (e->type == SAPP_EVENTTYPE_MOUSE_MOVE) {
     m_mouse_x += e->mouse_dx;
     m_mouse_y += e->mouse_dy;
-    m_cam->updateMouse(m_mouse_x, m_mouse_y);
+    m_cam.updateMouse(m_mouse_x, m_mouse_y);
   }
 
   if (e->type == SAPP_EVENTTYPE_FOCUSED) {
@@ -233,10 +212,6 @@ void Game::initPhysX() {
     LogError("PxMaterial Failed");
     abort();
   }
-
-  physx::PxRigidStatic *ground =
-      physx::PxCreatePlane(*m_physics, physx::PxPlane(0, 1, 0, 0), *m_material);
-  m_scene->addActor(*ground);
 
   {
     physx::PxTransform t(physx::PxVec3(0.0f, 0.0f, 0.0f));
@@ -354,8 +329,8 @@ void Game::initPipeline() {
 
     desc.index_type = SG_INDEXTYPE_UINT16;
     desc.cull_mode = SG_CULLMODE_BACK;
-    desc.depth.write_enabled = true;
     desc.depth.compare = SG_COMPAREFUNC_LESS;
+    desc.depth.write_enabled = true;
     m_render_bb.init(desc, billboard_shader_desc(sg_query_backend()));
   }
 
@@ -367,10 +342,39 @@ void Game::initPipeline() {
     desc.layout.attrs[ATTR_shape_acolor] = sshape_color_vertex_attr_state();
     desc.primitive_type = SG_PRIMITIVETYPE_LINE_STRIP;
     desc.index_type = SG_INDEXTYPE_UINT16;
-    desc.cull_mode = SG_CULLMODE_BACK;
+    desc.cull_mode = SG_CULLMODE_FRONT;
     desc.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
     desc.depth.write_enabled = true;
 
     m_render_sp.init(desc, shape_shader_desc(sg_query_backend()));
   }
+}
+
+void Game::initTextures() {
+  setTextureVerticalFlip(true);
+  setTextureWrap(SG_WRAP_REPEAT, SG_WRAP_REPEAT);
+  setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
+
+  addTextureOnThread("assets/models/Beat/Beat.png");
+
+  // addTextureOnThread("assets/models/deku_tree/leaves.png");
+  // addTextureOnThread("assets/models/deku_tree/road.png");
+  // addTextureOnThread("assets/models/deku_tree/treestop.png");
+  // addTextureOnThread("assets/models/deku_tree/treesbottom.png");
+  // addTextureOnThread("assets/models/deku_tree/vines.png");
+  // addTextureOnThread("assets/models/deku_tree/Road end.png");
+  // addTextureOnThread("assets/models/deku_tree/mustache and eyebrows.png");
+  // addTextureOnThread("assets/models/deku_tree/deku tree skin.png");
+  // addTextureOnThread("assets/models/deku_tree/ground.png");
+  // addTextureOnThread("assets/models/deku_tree/Wall.png");
+
+  addTextureOnThread("assets/maps/textures/test/grass.png");
+  addTextureOnThread("assets/maps/textures/test/wall.png");
+
+  setTextureVerticalFlip(false);
+  setTextureWrap(SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
+  setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
+
+  addTextureOnThread("assets/textures/tree.png");
+  addTextureOnThread("assets/textures/bayo.png");
 }

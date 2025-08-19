@@ -1,29 +1,43 @@
-/*
- *
- * TODO Criar prevenções á dados relacionados na pilha de Texturas
- *
- */
-
 #include "sokol_fetch.h"
 #include "sokol_gfx.h"
 #include "stb_image.h"
 
 #include "mesh.hpp"
 
-// tmp name??
-std::vector<Texture> texture_pool;
-u8 io_texture_buffer[256 * 1024];
-
-static struct {
+static struct TextureInfo {
   std::map<std::string, Texture> hash;
 
-  sg_filter min_filter : SG_FILTER_LINEAR;
-  sg_filter max_filter : SG_FILTER_LINEAR;
+  sg_filter min_filter;
+  sg_filter max_filter;
 
-  sg_wrap wrap_u : SG_WRAP_REPEAT;
-  sg_wrap wrap_v : SG_WRAP_REPEAT;
+  sg_wrap wrap_u;
+  sg_wrap wrap_v;
 
+  bool flip_uv;
+
+  u16 total_requests;
 } texture_info;
+
+static u8 io_texture_buffer[256 * 1024];
+
+static void responseCallback(const sfetch_response_t *response) {
+  if (response->fetched) {
+    const int *data = (const int *)response->user_data;
+
+    setTextureFilter((sg_filter)data[0], (sg_filter)data[1]);
+    setTextureWrap((sg_wrap)data[2], (sg_wrap)data[3]);
+    setTextureVerticalFlip(data[4]);
+    addTexture(response->path);
+  }
+
+  if (response->finished) {
+    if (response->failed) {
+      LogError("Nao foi");
+    }
+
+    texture_info.total_requests--;
+  }
+}
 
 Texture loadTexture(const char *filename, TextureType tex_type) {
   Texture t = {};
@@ -38,35 +52,46 @@ Texture loadTexture(const char *filename, TextureType tex_type) {
   if (data) {
     LogInfo("Loading texture: %s", filename);
 
-    sg_image_desc desc = {};
-    desc.type = SG_IMAGETYPE_2D;
-    desc.width = w;
-    desc.height = h;
-    desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    desc.data.subimage[0][0].ptr = data;
-    desc.data.subimage[0][0].size = w * h * 4;
+    {
+      sg_image_desc desc = {};
+      desc.type = SG_IMAGETYPE_2D;
+      desc.width = w;
+      desc.height = h;
+      desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+      desc.data.subimage[0][0].ptr = data;
+      desc.data.subimage[0][0].size = w * h * 4;
+      t.img = sg_make_image(&desc);
+    }
 
-    t.img = sg_make_image(&desc);
+    {
+      sg_sampler_desc desc = {};
+      desc.min_filter = texture_info.min_filter;
+      desc.mag_filter = texture_info.max_filter;
+      desc.wrap_u = texture_info.wrap_u;
+      desc.wrap_v = texture_info.wrap_v;
+      t.smp = sg_make_sampler(&desc);
+    }
 
-    // loaded = true;
+    stbi_image_free(data);
+    return t;
   } else {
     LogError("Texture loading error %s file: %s", stbi_failure_reason(),
              filename);
   }
 
-  sg_sampler_desc desc = {};
-  desc.min_filter = texture_info.min_filter;
-  desc.mag_filter = texture_info.max_filter;
-  desc.wrap_u = texture_info.wrap_u;
-  desc.wrap_v = texture_info.wrap_v;
-  t.smp = sg_make_sampler(&desc);
-
   stbi_image_free(data);
-
   return t;
 }
 
-void initTextures() { addTexture("assets/default.png"); }
+void initTexturePool() {
+  texture_info.min_filter = SG_FILTER_LINEAR;
+  texture_info.max_filter = SG_FILTER_LINEAR;
+
+  texture_info.wrap_u = SG_WRAP_REPEAT;
+  texture_info.wrap_v = SG_WRAP_REPEAT;
+
+  addTexture("assets/textures/default.png");
+}
 
 void setTextureFilter(sg_filter min, sg_filter max) {
   texture_info.min_filter = min;
@@ -79,6 +104,7 @@ void setTextureWrap(sg_wrap u, sg_wrap v) {
 }
 
 void setTextureVerticalFlip(bool flip) {
+  texture_info.flip_uv = flip;
   stbi_set_flip_vertically_on_load(flip);
 }
 
@@ -93,23 +119,33 @@ const std::string getTextureIDFromPath(const std::string &path) {
   std::string id = path;
   id = id.substr(id.find_last_of("/") + 1);
   id = id.substr(0, id.find_first_of(".png"));
-  // id = id.substr(0, id.find_first_of(".bmp"));
-
-  // LogInfo("antes: %s depois: %s", path.c_str(), id.c_str());
-
   return id;
 }
 
+const u16 &getTextureRequests(void) { return texture_info.total_requests; }
+
 Texture &getTextureFromID(const std::string &id) {
   if (!texture_info.hash.contains(id)) {
-    LogError("Texture ID not founded in hash map: %s", id.c_str());
+    // LogError("Texture ID not founded in hash map: %s", id.c_str());
     return texture_info.hash.at("default");
   }
   return texture_info.hash.at(id);
 }
 
-bool isTexture(const std::string &id) { 
-  return texture_info.hash.contains(id);
+bool isTexture(const std::string &id) { return texture_info.hash.contains(id); }
+
+void addTextureOnThread(const char *path) {
+  int data[5] = {texture_info.min_filter, texture_info.max_filter,
+                texture_info.wrap_u, texture_info.wrap_v, texture_info.flip_uv};
+
+  sfetch_request_t desc = {};
+  desc.path = path;
+  desc.callback = responseCallback;
+  desc.buffer = SFETCH_RANGE(io_texture_buffer);
+  desc.user_data = SFETCH_RANGE(data);
+  sfetch_send(&desc);
+
+  texture_info.total_requests++;
 }
 
 void destroyTexture(std::string id) {
@@ -186,6 +222,7 @@ void Mesh::bind(u16 img, u16 smp) {
   bind.index_buffer = m_ebo;
 
   Texture &t = getTextureFromID(getTextureIDFromPath(m_textures_path[0]));
+
   bind.images[img] = t.img;
   bind.samplers[smp] = t.smp;
 

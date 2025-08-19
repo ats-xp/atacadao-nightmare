@@ -12,7 +12,7 @@ enum CameraDirection : u8 {
   RIGHT,
 };
 
-class Camera {
+struct Camera {
   glm::vec3 m_pos;
   glm::vec3 m_front;
   glm::vec3 m_up;
@@ -43,6 +43,8 @@ public:
   Camera &operator=(const Camera &&other);
 
   ~Camera() = default;
+
+  void init(glm::vec3 pos = glm::vec3(0.0f));
 
   void updateVectors();
   void updateMouse(f32 x, f32 y);

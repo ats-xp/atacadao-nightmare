@@ -16,19 +16,19 @@
 #include "player.hpp"
 #include "render.hpp"
 #include "shape.hpp"
+#include "map.hpp"
 
 class Game : public State {
   Render m_render;
   Render m_render_bb; // billboard
   Render m_render_sp; // Shape
 
-  f32 rot = 0.0f;
-
-  Model *m_deku_tree;
+  Player *m_player;
   std::array<Billboard *, 2> m_boards;
 
-  std::shared_ptr<Camera> m_cam;
-  std::shared_ptr<Player> m_player;
+  Map m_map;
+
+  Camera m_cam;
 
   FONScontext *m_font_ctx;
   int m_font_normal;
@@ -44,15 +44,14 @@ class Game : public State {
   physx::PxScene *m_scene = nullptr;
   physx::PxMaterial *m_material = nullptr;
 
-  std::vector<physx::PxRigidActor*> m_actors;
-
-  // physx::PxPvd *m_pvd = nullptr;
+  std::vector<physx::PxRigidActor *> m_actors;
 
   void initPhysX();
   void stepSimulation(f32 dt);
   void shutdownPhysX();
 
   void initPipeline();
+  void initTextures();
 
 public:
   Game();

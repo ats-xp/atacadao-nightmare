@@ -9,6 +9,7 @@ src_dir = files(
   'model.cpp',
   'render.cpp',
   'billboard.cpp',
+  'map.cpp',
   'sokol_impl.c',
   'base_impl.c',
   'stb_impl.c',

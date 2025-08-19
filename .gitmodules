@@ -19,3 +19,6 @@
 [submodule "vendor/PhysX"]
 	path = vendor/PhysX
 	url = https://github.com/NVIDIA-Omniverse/PhysX.git
+[submodule "vendor/ericw-tools"]
+	path = vendor/ericw-tools
+	url = https://github.com/ericwa/ericw-tools.git

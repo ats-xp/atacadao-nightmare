@@ -29,20 +29,22 @@ void Player::input(Input &inp) {
   m_vel = glm::vec3(0.0f);
 
   if (inp.up) {
-    m_vel.x = m_cam_front.x;
-    m_vel.z = m_cam_front.z;
+    m_vel += m_cam_front;
   } else if (inp.down) {
-    m_vel.x = -m_cam_front.x;
-    m_vel.z = -m_cam_front.z;
+    m_vel -= m_cam_front;
   }
 
   if (inp.left) {
-    m_vel.x = -m_cam_right.x;
-    m_vel.z = -m_cam_right.z;
+    m_vel -= m_cam_right;
   } else if (inp.right) {
-    m_vel.x = m_cam_right.x;
-    m_vel.z = m_cam_right.z;
+    m_vel += m_cam_right;
   }
+
+  if (glm::length(m_vel) > 0.0f) {
+    m_vel = glm::normalize(m_vel);
+  }
+
+  m_vel *= m_speed;
 
   if (inp.action && is_ground) {
     jump(8.0f);
@@ -50,9 +52,6 @@ void Player::input(Input &inp) {
 }
 
 void Player::update(f32 dt) {
-  m_vel.x *= m_speed;
-  m_vel.z *= m_speed;
-
   physx::PxTransform pose = m_collider->getGlobalPose();
   m_pos = pxToGlmVec3(pose.p);
 
@@ -104,10 +103,11 @@ void Player::initPhysics(physx::PxPhysics *physics, physx::PxMaterial *material,
 }
 
 bool Player::isOnGround(physx::PxScene *scene) {
-  f32 half_height =  0.5f;
+  f32 half_height = 0.5f;
   physx::PxTransform pose = m_collider->getGlobalPose();
   physx::PxVec3 dir(0.0f, -1.0f, 0.0f);
-  physx::PxVec3 origin = pose.p - physx::PxVec3(0.0f, half_height - 0.05f, 0.0f);
+  physx::PxVec3 origin =
+      pose.p - physx::PxVec3(0.0f, half_height - 0.05f, 0.0f);
   f32 max_dist = 0.1f;
 
   physx::PxRaycastBuffer hit;

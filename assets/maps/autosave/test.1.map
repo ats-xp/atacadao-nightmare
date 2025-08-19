@@ -1,0 +1,17 @@
+// Game: Generic
+// Format: Quake2
+// entity 0
+{
+"classname" "worldspawn"
+"_tb_textures" "textures"
+"_tb_layer_omit_from_export" "1"
+// brush 0
+{
+( 88 -360 224 ) ( 88 -359 224 ) ( 88 -360 225 ) test/bayo2 0 0 0 1 1
+( 88 -360 224 ) ( 88 -360 225 ) ( 89 -360 224 ) test/bayo2 0 0 0 1 1
+( 88 -360 224 ) ( 89 -360 224 ) ( 88 -359 224 ) test/bayo2 0 0 0 1 1
+( 264 -192 232 ) ( 264 -191 232 ) ( 265 -192 232 ) test/bayo2 0 0 0 1 1
+( 264 -192 232 ) ( 265 -192 232 ) ( 264 -192 233 ) test/bayo2 0 0 0 1 1
+( 264 -192 232 ) ( 264 -192 233 ) ( 264 -191 232 ) test/bayo2 0 0 0 1 1
+}
+}

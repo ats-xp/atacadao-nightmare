@@ -1,21 +1,7 @@
 #include "camera.hpp"
 
 Camera::Camera(glm::vec3 pos) : m_pos(pos) {
-  m_front = {0.0f, 0.0f, -1.0f};
-  m_world_up = {0.0f, 1.0f, 0.0f};
-
-  m_last_mouse = {0.0f, 0.0f};
-
-  m_fov = 45.0f;
-  m_near = 0.1f;
-  m_far = 100.0f;
-
-  m_yaw = -90.0f;
-  m_pitch = 0.0f;
-
-  m_sensivity = 0.08f;
-
-  updateVectors();
+  init(pos);
 }
 
 Camera::Camera(Camera &other) {
@@ -94,6 +80,25 @@ Camera &Camera::operator=(const Camera &&other) {
 
   m_sensivity = other.m_sensivity;
   return *this;
+}
+
+void Camera::init(glm::vec3 pos) {
+  m_pos = pos;
+  m_front = {0.0f, 0.0f, -1.0f};
+  m_world_up = {0.0f, 1.0f, 0.0f};
+
+  m_last_mouse = {0.0f, 0.0f};
+
+  m_fov = 45.0f;
+  m_near = 0.1f;
+  m_far = 100.0f;
+
+  m_yaw = -90.0f;
+  m_pitch = 0.0f;
+
+  m_sensivity = 0.08f;
+
+  updateVectors();
 }
 
 void Camera::updateVectors() {

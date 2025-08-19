@@ -1,8 +1,5 @@
 /*
  *
- * TODO Otimizar a 'load texture'
- * TODO Carregar as texturas de forma assincrona'
- * TODO Aprimorar a Model Store
  * TODO Melhorar as funções de rotação
  *
  */
@@ -16,8 +13,6 @@
 #include "stb_image.h"
 
 #include "default.glsl.h"
-
-static void fecthTextureCallback(const sfetch_response_t *response);
 
 Model::Model(const char *path) { init(path); }
 
@@ -153,7 +148,8 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
 
   std::vector<std::string> diffuse_maps =
       loadMaterialTextures(material, aiTextureType_DIFFUSE, DIFFUSE);
-  textures_id.insert(textures_id.end(), diffuse_maps.begin(), diffuse_maps.end());
+  textures_id.insert(textures_id.end(), diffuse_maps.begin(),
+                     diffuse_maps.end());
 
   // std::vector<Texture> specular_maps =
   //     loadMaterialTextures(material, aiTextureType_SPECULAR, SPECULAR);
@@ -179,9 +175,10 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
     aiString str;
     mat->GetTexture(type, i, &str);
 
-    Texture &tex = getTextureFromID(getTextureIDFromPath(str.C_Str()));
+    // Texture &tex = getTextureFromID(getTextureIDFromPath(str.C_Str()));
+    std::string path = getTextureIDFromPath(str.C_Str());
 
-    ids.push_back(tex.path);
+    ids.push_back(path);
   }
 
   return ids;
