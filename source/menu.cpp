@@ -1,18 +1,25 @@
 #include "menu.hpp"
 
+#include "input.hpp"
+
 #include "sokol_gfx.h"
 
 #include "sokol_fontstash.h"
 #include "sokol_gl.h"
 
+#include <filesystem>
+extern std::filesystem::path g_game_root;
+
 Menu::Menu() {
   {
+    std::string path = g_game_root / "assets/fonts/daydream/Daydream.ttf";
+
     sfons_desc_t desc = {};
     desc.width = 512;
     desc.height = 512;
     m_font_ctx = sfons_create(&desc);
     m_font_daydream = fonsAddFont(m_font_ctx, "daydream",
-                                  "assets/fonts/daydream/Daydream.ttf");
+                                  path.c_str());
   }
 
   LogInfo("Menu created");
@@ -24,7 +31,8 @@ Menu::~Menu() {
   LogInfo("Menu deleted");
 }
 
-void Menu::update(f32 dt, Input &inp) {
+void Menu::update(f32 dt) {
+  (void)dt;
   if (inp.action)
     setNext(StateId::GAME);
 };

@@ -4,6 +4,10 @@
 
 #include "mesh.hpp"
 
+#include <filesystem>
+
+extern std::filesystem::path g_game_root;
+
 static struct TextureInfo {
   std::map<std::string, Texture> hash;
 
@@ -32,7 +36,7 @@ static void responseCallback(const sfetch_response_t *response) {
 
   if (response->finished) {
     if (response->failed) {
-      LogError("Nao foi");
+      LogError("Load Texture Failed: %s | %d", response->path, response->error_code);
     }
 
     texture_info.total_requests--;
@@ -47,7 +51,7 @@ Texture loadTexture(const char *filename, TextureType tex_type) {
   t.type = tex_type;
 
   int w, h, nch;
-  stbi_uc *data = stbi_load(filename, &w, &h, &nch, 4);
+  stbi_uc *data = stbi_load((g_game_root / filename).string().c_str(), &w, &h, &nch, 4);
 
   if (data) {
     LogInfo("Loading texture: %s", filename);
@@ -139,7 +143,10 @@ void addTextureOnThread(const char *path) {
                 texture_info.wrap_u, texture_info.wrap_v, texture_info.flip_uv};
 
   sfetch_request_t desc = {};
-  desc.path = path;
+
+  std::string p = g_game_root / path;
+
+  desc.path = p.c_str();
   desc.callback = responseCallback;
   desc.buffer = SFETCH_RANGE(io_texture_buffer);
   desc.user_data = SFETCH_RANGE(data);

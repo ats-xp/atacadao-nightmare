@@ -10,22 +10,20 @@ void Map::init(const char *path) { model = new Model(path); }
 
 void Map::destroy() { delete model; }
 
-void Map::draw(Camera &cam) { model->draw(cam); }
+void Map::draw(Camera &cam) {
+  // Transform trans = {};
+  // trans.scale = glm::vec3(0.1f);
+
+  // model->setTransformitions(trans);
+  model->draw(cam);
+}
 
 void Map::setupPhysics(physx::PxPhysics *physics, physx::PxScene *scene) {
-  int c = 0;
   for (auto &m : model->getMeshes()) {
-    LogInfo(FMT_I32, c++);
-
-    std::vector<physx::PxVec3> pos(m.m_vertices.size());
-    for (size_t i = 0; i < m.m_vertices.size(); i++) {
-      pos[i] = glmToPxVec3(m.m_vertices[i].pos);
-    }
-
     physx::PxTriangleMeshDesc desc = {};
-    desc.points.count = static_cast<physx::PxU32>(pos.size());
-    desc.points.stride = sizeof(physx::PxVec3);
-    desc.points.data = pos.data();
+    desc.points.count = static_cast<physx::PxU32>(m.m_vertices.size());
+    desc.points.stride = sizeof(Vertex);
+    desc.points.data = &m.m_vertices[0].pos;
 
     desc.triangles.count = static_cast<physx::PxU32>(m.m_indices.size());
     desc.triangles.stride = 3 * sizeof(u16);
@@ -50,13 +48,16 @@ void Map::setupPhysics(physx::PxPhysics *physics, physx::PxScene *scene) {
     physx::PxTriangleMesh *triangle_mesh =
         physics->createTriangleMesh(read_buffer);
 
+    // physx::PxMeshScale scale(0.1f);
     physx::PxTriangleMeshGeometry geom(triangle_mesh);
-    physx::PxRigidStatic *actor = physics->createRigidStatic(
-        physx::PxTransform(physx::PxVec3(0.0f, 0.0f, 0.0f)));
+    physx::PxRigidStatic *actor =
+        physics->createRigidStatic(physx::PxTransform(physx::PxIdentity));
     physx::PxShape *shape =
         physics->createShape(geom, *physics->createMaterial(0.5f, 0.5f, 0.1f));
 
     actor->attachShape(*shape);
+    shape->release();
+
     scene->addActor(*actor);
   }
 }

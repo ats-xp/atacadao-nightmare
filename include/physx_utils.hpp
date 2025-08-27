@@ -15,9 +15,24 @@ constexpr glm::vec3 pxToGlmVec3(const physx::PxVec3 &vec) {
   return v;
 }
 
+constexpr glm::vec3 pxToGlmExtendedVec3(const physx::PxExtendedVec3 &vec) {
+  glm::vec3 v;
+  v.x = vec.x;
+  v.y = vec.y;
+  v.z = vec.z;
+  return v;
+}
 
 inline physx::PxVec3 glmToPxVec3(const glm::vec3 &vec) {
   physx::PxVec3 v;
+  v.x = vec.x;
+  v.y = vec.y;
+  v.z = vec.z;
+  return v;
+}
+
+inline physx::PxExtendedVec3 glmToPxExtendedVec3(const glm::vec3 &vec) {
+  physx::PxExtendedVec3 v;
   v.x = vec.x;
   v.y = vec.y;
   v.z = vec.z;

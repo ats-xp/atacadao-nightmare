@@ -22,3 +22,6 @@
 [submodule "vendor/ericw-tools"]
 	path = vendor/ericw-tools
 	url = https://github.com/ericwa/ericw-tools.git
+[submodule "vendor/lightmapper"]
+	path = vendor/lightmapper
+	url = https://github.com/ands/lightmapper.git

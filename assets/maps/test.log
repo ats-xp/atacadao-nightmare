@@ -1,0 +1,74 @@
+---- qbsp / ericw-tools v0.18.1 ----
+Input file: test.map
+Output file: test.bsp
+
+---- LoadMapFile ----
+*** WARNING 02: Multiple info_player_start entities
+*** WARNING 02: Multiple info_player_start entities
+*** WARNING 02: Multiple info_player_start entities
+*** WARNING 06: No info_player_deathmatch entities in level
+          548 faces
+           92 brushes
+            6 entities
+            7 unique texnames
+           94 texinfo
+
+*** WARNING 00: No wad or _wad key exists in the worldmodel
+Processing hull 0...
+---- Brush_LoadEntity ----
+           92 brushes
+          136 planes
+---- CSGFaces ----
+          548 brushfaces
+          528 csgfaces
+          441 mergedfaces
+---- SolidBSP ----
+          659 split nodes
+          247 solid leafs
+          413 empty leafs
+            0 water leafs
+            0 detail leafs
+            0 detail illusionary leafs
+            0 detail fence leafs
+            0 illusionary visblocker leafs
+         1193 leaffaces
+         1116 nodefaces
+---- Portalize ----
+          413 vis leafs
+          413 vis clusters
+         1081 vis portals
+---- FillOutside ----
+*** WARNING 10: Reached occupant at (-208 -1392 540), no filling performed.
+Leak file written to test.pts
+---- MakeFaceEdges ----
+---- GrowRegions ----
+Processing hull 1...
+*** WARNING 10: Reached occupant at (-208 -1392 540), no filling performed.
+Processing hull 2...
+*** WARNING 10: Reached occupant at (-208 -1392 540), no filling performed.
+*** WARNING 16: Texture grass not found
+*** WARNING 16: Texture wall not found
+*** WARNING 16: Texture __TB_empty not found
+*** WARNING 16: Texture floor not found
+*** WARNING 16: Texture rocks not found
+*** WARNING 16: Texture bayo2 not found
+*** WARNING 16: Texture tenman not found
+---- WriteBSPFile ----
+Wrote test.bsp
+          311 planes             6220
+         1352 vertexes          16224
+          659 nodes             28996
+           76 texinfo            3040
+         1116 faces             31248
+         1344 clipnodes         16128
+          414 leafs             18216
+         1193 marksurfaces       4772
+         4459 surfedges         17836
+         2956 edges             23648
+            7 textures             32
+              lightdata             0
+              visdata               0
+              entdata             330
+
+0.135 seconds elapsed
+Peak memory usage: 6432532 (6.1M)

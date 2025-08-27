@@ -12,6 +12,6 @@ public:
   Menu();
   ~Menu();
 
-  void update(f32 dt, Input &inp) override;
+  void update(f32 dt) override;
   void render() override;
 };

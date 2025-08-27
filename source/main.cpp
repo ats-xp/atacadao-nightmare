@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <memory>
 
 #include <glm.hpp>
@@ -19,7 +20,11 @@
 #include "base.h"
 
 #include "game.hpp"
+#include "input.hpp"
 #include "menu.hpp"
+
+Input inp;
+std::filesystem::path g_game_root;
 
 static struct {
   /*
@@ -29,7 +34,7 @@ static struct {
    */
   std::unique_ptr<State> st;
 
-  Input input;
+  // Input input;
 
   u64 last_time;
   f64 delta_time;
@@ -39,6 +44,12 @@ static struct {
 } state;
 
 static void init() {
+  char exe_path[PATH_MAX];
+  ssize_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
+  (void)count;
+  g_game_root = exe_path;
+  g_game_root = g_game_root.parent_path() / "../";
+
   {
     sg_desc desc = {};
     desc.environment = sglue_environment();
@@ -90,7 +101,7 @@ static void frame() {
     }
   }
 
-  state.st->update(static_cast<float>(state.delta_time), state.input);
+  state.st->update(static_cast<float>(state.delta_time));
 
   sg_pass_action action = {};
   action.colors[0].load_action = SG_LOADACTION_CLEAR;
@@ -119,7 +130,7 @@ static void handleInput(const sapp_event *e) {
   if (e->key_code == (key))                                                    \
     inp.btn = btn_down;
 
-  Input &inp = state.input;
+  // Input &inp = state.input;
 
   state.st->handleEvent(e);
 
@@ -127,13 +138,14 @@ static void handleInput(const sapp_event *e) {
     bool btn_down = e->type == SAPP_EVENTTYPE_KEY_DOWN;
 
     SET_KEY(action, SAPP_KEYCODE_Z);
+    SET_KEY(b, SAPP_KEYCODE_B);
+
+    SET_KEY(jump, SAPP_KEYCODE_SPACE);
 
     SET_KEY(up, SAPP_KEYCODE_W);
     SET_KEY(down, SAPP_KEYCODE_S);
     SET_KEY(left, SAPP_KEYCODE_A);
     SET_KEY(right, SAPP_KEYCODE_D);
-
-    SET_KEY(b, SAPP_KEYCODE_B);
 
     if (e->key_repeat)
       return;
@@ -161,7 +173,6 @@ sapp_desc sokol_main(int argc, char **argv) {
   desc.event_cb = handleInput;
   desc.logger.func = slog_func;
 
-  // tmp = mul-size
   desc.width = 640;
   desc.height = 480;
 

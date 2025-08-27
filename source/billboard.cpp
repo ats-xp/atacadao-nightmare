@@ -17,6 +17,8 @@ Billboard::Billboard(const char *texture) {
   std::vector<u16> ind = {0, 1, 2, 0, 2, 3};
   std::vector<std::string> tex_id;
 
+  // glm::vec3 mul(MUL_X, MUL_Y, MUL_Z);
+
   vtx.push_back(Vertex(glm::vec3(-0.5f, 0.5f, 0.0f),
                        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f)));
   vtx.push_back(Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f),
@@ -38,6 +40,7 @@ void Billboard::draw(Camera &cam) {
   vs_params.proj = cam.getProjectionMatrix();
   vs_params.view = cam.getViewMatrix();
   vs_params.center = m_pos;
+  vs_params.size = glm::vec2(64, 64);
 
   m_mesh->bind(IMG_tex, SMP_smp);
 

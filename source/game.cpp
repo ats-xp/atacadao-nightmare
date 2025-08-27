@@ -19,6 +19,9 @@
 #include "default.glsl.h"
 #include "shape.glsl.h"
 
+#include <filesystem>
+extern std::filesystem::path g_game_root;
+
 Game::Game() {
   {
     sfons_desc_t desc = {};
@@ -27,8 +30,11 @@ Game::Game() {
     desc.height = 512 * dpi;
     m_font_ctx = sfons_create(&desc);
 
+    std::string path = g_game_root / "assets/fonts/daydream/Daydream.ttf";
+
     m_font_normal =
-        fonsAddFont(m_font_ctx, "normal", "assets/fonts/daydream/Daydream.ttf");
+        fonsAddFont(m_font_ctx, "normal",
+                    path.c_str());
   }
 
   {
@@ -45,7 +51,7 @@ Game::Game() {
   initTexturePool();
   initTextures();
 
-  m_player = new Player(glm::vec3(-4.0f, 0.0f, 4.0f));
+  m_player = new Player(glm::vec3(52, 16, 157));
   m_map.init("assets/maps/test/test.obj");
   m_map.setupPhysics(m_physics, m_scene);
 
@@ -54,8 +60,9 @@ Game::Game() {
 
   m_cam.init(glm::vec3(-12.861005, 1.293806, 0.921208));
   m_cam.setViewport(sapp_widthf(), sapp_heightf());
+  m_cam.setDistance(0.01f, 3000.0f);
 
-  m_player->initPhysics(m_physics, m_material, m_scene);
+  m_player->initPhysics(m_physics, m_control_mgr);
 
   physx::PxU32 nb_actors =
       m_scene->getNbActors(physx::PxActorTypeFlag::eRIGID_DYNAMIC);
@@ -78,32 +85,42 @@ Game::~Game() {
   shutdownPhysX();
 
   sfons_destroy(m_font_ctx);
-
   sfetch_shutdown();
 
   LogInfo("Game deleted");
 }
+glm::vec3 vel(0.0f);
+glm::vec3 vel2(0.0f);
 
-void Game::update(f32 dt, Input &inp) {
+void Game::update(f32 dt) {
   sfetch_dowork();
   stepSimulation(dt);
 
+  vel.y -= 35.0f * dt;
+  vel2.y -= 35.0f * dt;
+
   {
-    physx::PxRigidDynamic *box = m_actors[0]->is<physx::PxRigidDynamic>();
-    physx::PxTransform pose = box->getGlobalPose();
-    m_boards[0]->m_pos = pxToGlmVec3(pose.p);
+    physx::PxControllerFilters filters;
+    physx::PxController *cnt = m_control_mgr->getController(0);
+
+    physx::PxVec3 disp = glmToPxVec3(vel * dt);
+    physx::PxControllerCollisionFlags flags =
+        cnt->move(disp, 0.001f, dt, filters);
+
+    m_boards[0]->m_pos = pxToGlmExtendedVec3(cnt->getPosition());
   }
 
   {
-    physx::PxRigidDynamic *box = m_actors[1]->is<physx::PxRigidDynamic>();
-    physx::PxTransform pose = box->getGlobalPose();
-    m_boards[1]->m_pos.x = pose.p.x;
-    m_boards[1]->m_pos.y = pose.p.y;
-    m_boards[1]->m_pos.z = pose.p.z;
+    physx::PxControllerFilters filters;
+    physx::PxController *cnt = m_control_mgr->getController(1);
+
+    physx::PxVec3 disp = glmToPxVec3(vel2 * dt);
+    physx::PxControllerCollisionFlags flags =
+        cnt->move(disp, 0.001f, dt, filters);
+
+    m_boards[1]->m_pos = pxToGlmExtendedVec3(cnt->getPosition());
   }
 
-  m_player->is_ground = m_player->isOnGround(m_scene);
-  m_player->input(inp);
   m_player->update(dt);
 }
 
@@ -133,28 +150,28 @@ void Game::render() {
   }
 
   // All 3D-Debug Render
-  m_render_sp.use();
-  {
-    for (physx::PxRigidActor *actor : m_actors) {
-      physx::PxU32 nb_shapes = actor->getNbShapes();
-      std::vector<physx::PxShape *> shapes(nb_shapes);
-      actor->getShapes(shapes.data(), nb_shapes);
-
-      for (physx::PxShape *shape : shapes) {
-        physx::PxTransform local_pose = shape->getLocalPose();
-        physx::PxTransform global_pose = actor->getGlobalPose() * local_pose;
-
-        glm::mat4 model = pxToGlmMat4(global_pose);
-        vs_params_shape_t vs_params = {};
-        vs_params.mvp = m_cam.getMatrix() * model;
-
-        Shape sp(glm::vec3(0.0f));
-        sp.bind();
-        sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
-        sp.draw(m_cam);
-      }
-    }
-  }
+  // m_render_sp.use();
+  // {
+  //   for (physx::PxRigidActor *actor : m_actors) {
+  //     physx::PxU32 nb_shapes = actor->getNbShapes();
+  //     std::vector<physx::PxShape *> shapes(nb_shapes);
+  //     actor->getShapes(shapes.data(), nb_shapes);
+  //
+  //     for (physx::PxShape *shape : shapes) {
+  //       physx::PxTransform local_pose = shape->getLocalPose();
+  //       physx::PxTransform global_pose = actor->getGlobalPose() * local_pose;
+  //
+  //       glm::mat4 model = pxToGlmMat4(global_pose);
+  //       vs_params_shape_t vs_params = {};
+  //       vs_params.mvp = m_cam.getMatrix() * model;
+  //
+  //       Shape sp(glm::vec3(0.0f));
+  //       sp.bind();
+  //       sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
+  //       sp.draw(m_cam);
+  //     }
+  //   }
+  // }
 
   m_render_bb.use();
   for (Billboard *b : m_boards) {
@@ -213,42 +230,38 @@ void Game::initPhysX() {
     abort();
   }
 
+  m_control_mgr = PxCreateControllerManager(*m_scene);
+
   {
-    physx::PxTransform t(physx::PxVec3(0.0f, 0.0f, 0.0f));
-    physx::PxBoxGeometry geom(physx::PxVec3(0.5f, 0.5f, 0.5f));
+    physx::PxTransformT<double> t(physx::PxExtendedVec3(240, 16, 264));
+    physx::PxCapsuleControllerDesc desc;
+    desc.height = 56.0f - 2 * 16;
+    desc.radius = 32.0f / 2;
+    desc.material = m_material;
+    desc.position = t.p;
+    desc.contactOffset = desc.radius * 0.1f;
+    desc.stepOffset = desc.height * 0.25f;
+    desc.slopeLimit = cosf(physx::PxPi / 4);
+    desc.nonWalkableMode =
+        physx::PxControllerNonWalkableMode::ePREVENT_CLIMBING;
 
-    f32 density = 10.0f;
-
-    physx::PxRigidDynamic *box =
-        physx::PxCreateDynamic(*m_physics, t, geom, *m_material, density);
-
-    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_X,
-                                 true);
-    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y,
-                                 true);
-    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z,
-                                 true);
-
-    m_scene->addActor(*box);
+    m_control_mgr->createController(desc);
   }
 
   {
-    physx::PxTransform t(physx::PxVec3(-4.0f, 0.0f, -1.0f));
-    physx::PxBoxGeometry geom(physx::PxVec3(0.5f, 0.5f, 0.5f));
+    physx::PxTransformT<double> t(physx::PxExtendedVec3(-72, 224, 1472));
+    physx::PxCapsuleControllerDesc desc;
+    desc.height = 56.0f - 2 * 16;
+    desc.radius = 32.0f / 2;
+    desc.material = m_material;
+    desc.position = t.p;
+    desc.contactOffset = desc.radius * 0.1f;
+    desc.stepOffset = desc.height * 0.25f;
+    desc.slopeLimit = cosf(physx::PxPi / 4);
+    desc.nonWalkableMode =
+        physx::PxControllerNonWalkableMode::ePREVENT_CLIMBING;
 
-    f32 density = 10.0f;
-
-    physx::PxRigidDynamic *box =
-        physx::PxCreateDynamic(*m_physics, t, geom, *m_material, density);
-
-    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_X,
-                                 true);
-    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y,
-                                 true);
-    box->setRigidDynamicLockFlag(physx::PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z,
-                                 true);
-
-    m_scene->addActor(*box);
+    m_control_mgr->createController(desc);
   }
 }
 
@@ -258,6 +271,11 @@ void Game::stepSimulation(f32 dt) {
 }
 
 void Game::shutdownPhysX() {
+  if (m_control_mgr) {
+    m_control_mgr->release();
+    m_control_mgr = nullptr;
+  }
+
   if (m_scene) {
     m_scene->release();
     m_scene = nullptr;
@@ -370,6 +388,10 @@ void Game::initTextures() {
 
   addTextureOnThread("assets/maps/textures/test/grass.png");
   addTextureOnThread("assets/maps/textures/test/wall.png");
+  addTextureOnThread("assets/maps/textures/test/floor.png");
+  addTextureOnThread("assets/maps/textures/test/tenman.png");
+  addTextureOnThread("assets/maps/textures/test/bayo2.png");
+  addTextureOnThread("assets/maps/textures/test/rocks.png");
 
   setTextureVerticalFlip(false);
   setTextureWrap(SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);

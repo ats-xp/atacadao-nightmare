@@ -16,6 +16,7 @@ dependencies = [
   dependency('xi'),
   dependency('xcursor'),
   dependency('gl'),
+  dependency('glfw3'),
 
   dependency('assimp'),
 
@@ -65,7 +66,7 @@ if sokol_shdc.found()
   endforeach
 endif
 
-
+subdir('assets/maps')
 subdir('source')
 
 src_dir += shd

@@ -75,6 +75,10 @@ public:
   std::vector<Texture> m_textures;
   std::vector<std::string> m_textures_path;
 
+  union {
+    std::vector<f32> m_lightmap;
+  };
+
   sg_buffer m_vbo;
   sg_buffer m_ebo;
 

@@ -44,6 +44,8 @@ class Game : public State {
   physx::PxScene *m_scene = nullptr;
   physx::PxMaterial *m_material = nullptr;
 
+  physx::PxControllerManager *m_control_mgr;
+
   std::vector<physx::PxRigidActor *> m_actors;
 
   void initPhysX();
@@ -57,7 +59,7 @@ public:
   Game();
   ~Game();
 
-  void update(f32 dt, Input &inp) override;
+  void update(f32 dt) override;
   void render() override;
   void handleEvent(const sapp_event *e) override;
 };

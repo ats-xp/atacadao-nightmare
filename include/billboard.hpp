@@ -2,6 +2,10 @@
 
 #include "mesh.hpp"
 
+#define MUL_X 32
+#define MUL_Y 56
+#define MUL_Z 32
+
 class Billboard {
   Mesh *m_mesh{nullptr};
 

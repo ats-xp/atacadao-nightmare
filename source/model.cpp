@@ -14,6 +14,10 @@
 
 #include "default.glsl.h"
 
+#include <filesystem>
+
+extern std::filesystem::path g_game_root;
+
 Model::Model(const char *path) { init(path); }
 
 Model::Model(const Model &other) : m_meshes(other.m_meshes) {
@@ -48,14 +52,18 @@ void Model::init(const char *path) {
   m_axis = glm::vec3(0.0f, 1.0f, 0.0f);
   m_rotation = 0.0f;
 
+  m_transformition.position = glm::vec3(0.0f);
+  m_transformition.scale = glm::vec3(1.0f);
+
   u32 flags =
       aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_GenNormals;
 
   Assimp::Importer imp;
 
-  LogInfo("Processing model: %s", path);
+  std::string path_root = g_game_root / path;
+  LogInfo("Processing model: %s", path_root.c_str());
 
-  const aiScene *scene = imp.ReadFile(path, flags);
+  const aiScene *scene = imp.ReadFile(path_root.c_str(), flags);
 
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
       !scene->mRootNode) {
@@ -63,7 +71,7 @@ void Model::init(const char *path) {
     return;
   }
 
-  std::string p = std::string(path);
+  std::string p = path_root;
   p = p.substr(0, p.find_last_of("/"));
   m_directory = p.c_str();
 
@@ -73,6 +81,7 @@ void Model::init(const char *path) {
 void Model::draw(Camera &cam) {
   glm::mat4 model = glm::mat4(1.0f);
   model = glm::translate(model, m_transformition.position);
+  model = glm::scale(model, m_transformition.scale);
 
   vs_params_t vs_params = {};
   vs_params.mvp = cam.getMatrix() * model;

@@ -1,7 +1,8 @@
 #pragma once
 
-struct Input {
+ struct Input {
   bool action;
+  bool jump;
   bool b;
 
   bool up;
@@ -11,3 +12,5 @@ struct Input {
 
   bool inc, dec; // debug
 };
+
+extern Input inp;
