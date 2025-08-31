@@ -1,0 +1,97 @@
+// Game: Generic
+// Format: Standard
+// entity 0
+{
+"classname" "worldspawn"
+"_tb_def" "external:../scripts/atacadao.fgd"
+// brush 0
+{
+( 200 -296 56 ) ( 200 -400 -8 ) ( 200 -24 -8 ) test/floor 16 -8 0 1 1
+( 328 -400 56 ) ( 200 -400 -8 ) ( 200 -400 56 ) test/floor -8 -8 0 1 1
+( 328 -24 -8 ) ( 200 -400 -8 ) ( 328 -400 -8 ) test/floor -8 -16 0 1 1
+( 328 -296 56 ) ( 200 -400 56 ) ( 200 -296 56 ) test/floor -8 -16 0 1 1
+( 328 -24 -8 ) ( 200 -296 56 ) ( 200 -24 -8 ) test/floor -8.32859 5.593657 0 1 -4.2994413
+( 328 -24 -8 ) ( 328 -400 56 ) ( 328 -296 56 ) test/floor -5.625431 16.937967 0 1 2.3574872
+}
+// brush 1
+{
+( 36 -136 16 ) ( 36 -135 16 ) ( 36 -136 17 ) __TB_empty 0 0 0 1 1
+( 40 -128 16 ) ( 40 -128 17 ) ( 41 -128 16 ) __TB_empty 0 0 0 1 1
+( 40 -136 20 ) ( 41 -136 20 ) ( 40 -135 20 ) __TB_empty 0 0 0 1 1
+( 72 -120 48 ) ( 72 -119 48 ) ( 73 -120 48 ) __TB_empty 0 0 0 1 1
+( 72 -120 24 ) ( 73 -120 24 ) ( 72 -120 25 ) __TB_empty 0 0 0 1 1
+( 68 -120 24 ) ( 68 -120 25 ) ( 68 -119 24 ) __TB_empty 0 0 0 1 1
+}
+// brush 2
+{
+( 36 -128 0 ) ( 36 -127 0 ) ( 36 -128 1 ) test/wall 0 0 0 1 1
+( 48 -128 0 ) ( 48 -128 1 ) ( 49 -128 0 ) test/wall 0 0 0 1 1
+( 48 -128 -8 ) ( 49 -128 -8 ) ( 48 -127 -8 ) test/wall 0 0 0 1 1
+( 68 -120 20 ) ( 68 -119 20 ) ( 69 -120 20 ) test/wall 0 0 0 1 1
+( 68 -120 4 ) ( 69 -120 4 ) ( 68 -120 5 ) test/wall 0 0 0 1 1
+( 68 -120 4 ) ( 68 -120 5 ) ( 68 -119 4 ) test/wall 0 0 0 1 1
+}
+// brush 3
+{
+( -576 -88 -8 ) ( -576 -87 -8 ) ( -576 -88 -7 ) test/grass 0 0 0 1 1
+( -24 -704 -8 ) ( -24 -704 -7 ) ( -23 -704 -8 ) test/grass 0 0 0 1 1
+( -24 -88 -32 ) ( -23 -88 -32 ) ( -24 -87 -32 ) test/grass 0 0 0 1 1
+( 56 8 -8 ) ( 56 9 -8 ) ( 57 8 -8 ) test/grass 0 0 0 1 1
+( 56 384 0 ) ( 57 384 0 ) ( 56 384 1 ) test/grass 0 0 0 1 1
+( 576 8 0 ) ( 576 8 1 ) ( 576 9 0 ) test/grass 0 0 0 1 1
+}
+// brush 4
+{
+( -496 -608 -16 ) ( -496 -607 -16 ) ( -496 -608 -15 ) test/floor 0 0 0 1 1
+( -496 -608 -16 ) ( -496 -608 -15 ) ( -495 -608 -16 ) test/floor 0 0 0 1 1
+( -496 -608 -16 ) ( -495 -608 -16 ) ( -496 -607 -16 ) test/floor 0 0 0 1 1
+( -224 -288 64 ) ( -224 -287 64 ) ( -223 -288 64 ) test/floor 0 0 0 1 1
+( -224 -288 0 ) ( -223 -288 0 ) ( -224 -288 1 ) test/floor 0 0 0 1 1
+( -224 -288 0 ) ( -224 -288 1 ) ( -224 -287 0 ) test/floor 0 0 0 1 1
+}
+}
+// entity 1
+{
+"classname" "info_enemy_spawn"
+"origin" "-304 -416 104"
+}
+// entity 2
+{
+"classname" "info_player_spawn"
+"origin" "240 -352 72"
+}
+// entity 3
+{
+"classname" "info_enemy_spawn"
+"origin" "-96 -112 8"
+}
+// entity 4
+{
+"classname" "info_enemy_spawn"
+"origin" "-304 -160 8"
+}
+// entity 5
+{
+"classname" "info_enemy_spawn"
+"origin" "16 -192 8"
+}
+// entity 6
+{
+"classname" "info_enemy_spawn"
+"origin" "48 -304 256"
+}
+// entity 7
+{
+"classname" "info_enemy_spawn"
+"origin" "304 112 8"
+}
+// entity 8
+{
+"classname" "info_enemy_spawn"
+"origin" "32 144 8"
+}
+// entity 9
+{
+"classname" "info_enemy_spawn"
+"origin" "-320 112 8"
+}

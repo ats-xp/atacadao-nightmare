@@ -1,9 +1,3 @@
-/*
- *
- * TODO: Criar uma Classe Entity/GameObject
- *
- */
-
 #include "game.hpp"
 
 #include "sokol_app.h"
@@ -13,11 +7,11 @@
 #include "sokol_fontstash.h"
 #include "sokol_gl.h"
 
-#include "physx_utils.hpp"
-
 #include "billboard.glsl.h"
 #include "default.glsl.h"
 #include "shape.glsl.h"
+
+#include "dummy.hpp"
 
 #include <filesystem>
 extern std::filesystem::path g_game_root;
@@ -32,9 +26,7 @@ Game::Game() {
 
     std::string path = g_game_root / "assets/fonts/daydream/Daydream.ttf";
 
-    m_font_normal =
-        fonsAddFont(m_font_ctx, "normal",
-                    path.c_str());
+    m_font_normal = fonsAddFont(m_font_ctx, "normal", path.c_str());
   }
 
   {
@@ -46,82 +38,60 @@ Game::Game() {
     sfetch_setup(&desc);
   }
 
-  initPhysX();
   initPipeline();
   initTexturePool();
   initTextures();
 
-  m_player = new Player(glm::vec3(52, 16, 157));
-  m_map.init("assets/maps/test/test.obj");
-  m_map.setupPhysics(m_physics, m_scene);
+  m_physics.init();
 
-  m_boards[0] = new Billboard("assets/tree.png");
-  m_boards[1] = new Billboard("assets/bayo.png");
+  m_map.init("assets/maps/test/test.obj");
+  m_map.setupPhysics(m_physics);
 
   m_cam.init(glm::vec3(-12.861005, 1.293806, 0.921208));
   m_cam.setViewport(sapp_widthf(), sapp_heightf());
   m_cam.setDistance(0.01f, 3000.0f);
 
-  m_player->initPhysics(m_physics, m_control_mgr);
+  m_player = new Player(m_map.getAttributeVec3("info_player_spawn"));
+  m_player->m_control =
+      PhysicsGameObject::create<physx::PxCapsuleControllerDesc>(
+          m_physics, 56.0f - 2 * 16, 32.0f / 2,
+          glmToPxExtendedVec3(m_player->m_pos));
 
-  physx::PxU32 nb_actors =
-      m_scene->getNbActors(physx::PxActorTypeFlag::eRIGID_DYNAMIC);
-  m_actors.resize(nb_actors);
-  m_scene->getActors(physx::PxActorTypeFlag::eRIGID_DYNAMIC,
-                     reinterpret_cast<physx::PxActor **>(m_actors.data()),
-                     nb_actors);
+  std::vector<TBEntity> entities = m_map.map.getEntityList("info_enemy_spawn");
+
+  for (auto &ent : entities) {
+    DummyObject *d =
+        new DummyObject("assets/textures/ishowspeed.png", m_physics);
+
+    physx::PxExtendedVec3 v =
+        glmToPxExtendedVec3(Map::parserStringToVec3(ent.getProperty("origin")));
+
+    d->m_control->setPosition(v);
+    m_objects.push_back(d);
+  }
 
   LogInfo("Game created");
 }
 
 Game::~Game() {
-  for (Billboard *b : m_boards) {
-    delete b;
-  }
-
   delete m_player;
   m_map.destroy();
-
-  shutdownPhysX();
 
   sfons_destroy(m_font_ctx);
   sfetch_shutdown();
 
   LogInfo("Game deleted");
 }
-glm::vec3 vel(0.0f);
-glm::vec3 vel2(0.0f);
 
 void Game::update(f32 dt) {
   sfetch_dowork();
-  stepSimulation(dt);
-
-  vel.y -= 35.0f * dt;
-  vel2.y -= 35.0f * dt;
-
-  {
-    physx::PxControllerFilters filters;
-    physx::PxController *cnt = m_control_mgr->getController(0);
-
-    physx::PxVec3 disp = glmToPxVec3(vel * dt);
-    physx::PxControllerCollisionFlags flags =
-        cnt->move(disp, 0.001f, dt, filters);
-
-    m_boards[0]->m_pos = pxToGlmExtendedVec3(cnt->getPosition());
-  }
-
-  {
-    physx::PxControllerFilters filters;
-    physx::PxController *cnt = m_control_mgr->getController(1);
-
-    physx::PxVec3 disp = glmToPxVec3(vel2 * dt);
-    physx::PxControllerCollisionFlags flags =
-        cnt->move(disp, 0.001f, dt, filters);
-
-    m_boards[1]->m_pos = pxToGlmExtendedVec3(cnt->getPosition());
-  }
+  m_physics.step(dt);
 
   m_player->update(dt);
+
+  for (auto o : m_objects) {
+    o->update(dt);
+  }
 }
 
 void Game::render() {
@@ -149,33 +119,11 @@ void Game::render() {
     m_map.draw(m_cam);
   }
 
-  // All 3D-Debug Render
-  // m_render_sp.use();
-  // {
-  //   for (physx::PxRigidActor *actor : m_actors) {
-  //     physx::PxU32 nb_shapes = actor->getNbShapes();
-  //     std::vector<physx::PxShape *> shapes(nb_shapes);
-  //     actor->getShapes(shapes.data(), nb_shapes);
-  //
-  //     for (physx::PxShape *shape : shapes) {
-  //       physx::PxTransform local_pose = shape->getLocalPose();
-  //       physx::PxTransform global_pose = actor->getGlobalPose() * local_pose;
-  //
-  //       glm::mat4 model = pxToGlmMat4(global_pose);
-  //       vs_params_shape_t vs_params = {};
-  //       vs_params.mvp = m_cam.getMatrix() * model;
-  //
-  //       Shape sp(glm::vec3(0.0f));
-  //       sp.bind();
-  //       sg_apply_uniforms(UB_vs_params_shape, SG_RANGE_REF(vs_params));
-  //       sp.draw(m_cam);
-  //     }
-  //   }
-  // }
-
   m_render_bb.use();
-  for (Billboard *b : m_boards) {
-    b->draw(m_cam);
+  {
+    for (auto o : m_objects) {
+      o->draw(m_cam);
+    }
   }
 
   sgl_draw();
@@ -190,110 +138,6 @@ void Game::handleEvent(const sapp_event *e) {
 
   if (e->type == SAPP_EVENTTYPE_FOCUSED) {
     sapp_lock_mouse(true);
-  }
-}
-
-void Game::initPhysX() {
-  m_foundation =
-      PxCreateFoundation(PX_PHYSICS_VERSION, m_allocator, m_error_callback);
-  if (!m_foundation) {
-    LogError("PxFoundation Failed");
-    abort();
-  }
-
-  physx::PxTolerancesScale scale;
-  bool record_memory_alloc = true;
-
-  m_physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_foundation, scale,
-                              record_memory_alloc);
-  if (!m_physics) {
-    LogError("PxPhysics Failed");
-    abort();
-  }
-
-  physx::PxSceneDesc scene_desc(m_physics->getTolerancesScale());
-  scene_desc.gravity = physx::PxVec3(0.0f, -9.81f, 0.0f);
-
-  m_dispatcher = physx::PxDefaultCpuDispatcherCreate(2);
-  scene_desc.cpuDispatcher = m_dispatcher;
-  scene_desc.filterShader = physx::PxDefaultSimulationFilterShader;
-
-  m_scene = m_physics->createScene(scene_desc);
-  if (!m_scene) {
-    LogError("PxScene Failed");
-    abort();
-  }
-
-  m_material = m_physics->createMaterial(0.5f, 0.5f, 0.6f);
-  if (!m_material) {
-    LogError("PxMaterial Failed");
-    abort();
-  }
-
-  m_control_mgr = PxCreateControllerManager(*m_scene);
-
-  {
-    physx::PxTransformT<double> t(physx::PxExtendedVec3(240, 16, 264));
-    physx::PxCapsuleControllerDesc desc;
-    desc.height = 56.0f - 2 * 16;
-    desc.radius = 32.0f / 2;
-    desc.material = m_material;
-    desc.position = t.p;
-    desc.contactOffset = desc.radius * 0.1f;
-    desc.stepOffset = desc.height * 0.25f;
-    desc.slopeLimit = cosf(physx::PxPi / 4);
-    desc.nonWalkableMode =
-        physx::PxControllerNonWalkableMode::ePREVENT_CLIMBING;
-
-    m_control_mgr->createController(desc);
-  }
-
-  {
-    physx::PxTransformT<double> t(physx::PxExtendedVec3(-72, 224, 1472));
-    physx::PxCapsuleControllerDesc desc;
-    desc.height = 56.0f - 2 * 16;
-    desc.radius = 32.0f / 2;
-    desc.material = m_material;
-    desc.position = t.p;
-    desc.contactOffset = desc.radius * 0.1f;
-    desc.stepOffset = desc.height * 0.25f;
-    desc.slopeLimit = cosf(physx::PxPi / 4);
-    desc.nonWalkableMode =
-        physx::PxControllerNonWalkableMode::ePREVENT_CLIMBING;
-
-    m_control_mgr->createController(desc);
-  }
-}
-
-void Game::stepSimulation(f32 dt) {
-  m_scene->simulate(dt);
-  m_scene->fetchResults(true);
-}
-
-void Game::shutdownPhysX() {
-  if (m_control_mgr) {
-    m_control_mgr->release();
-    m_control_mgr = nullptr;
-  }
-
-  if (m_scene) {
-    m_scene->release();
-    m_scene = nullptr;
-  }
-
-  if (m_dispatcher) {
-    m_dispatcher->release();
-    m_dispatcher = nullptr;
-  }
-
-  if (m_physics) {
-    m_physics->release();
-    m_physics = nullptr;
-  }
-
-  if (m_foundation) {
-    m_foundation->release();
-    m_foundation = nullptr;
   }
 }
 
@@ -373,30 +217,16 @@ void Game::initTextures() {
   setTextureWrap(SG_WRAP_REPEAT, SG_WRAP_REPEAT);
   setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
 
-  addTextureOnThread("assets/models/Beat/Beat.png");
-
-  // addTextureOnThread("assets/models/deku_tree/leaves.png");
-  // addTextureOnThread("assets/models/deku_tree/road.png");
-  // addTextureOnThread("assets/models/deku_tree/treestop.png");
-  // addTextureOnThread("assets/models/deku_tree/treesbottom.png");
-  // addTextureOnThread("assets/models/deku_tree/vines.png");
-  // addTextureOnThread("assets/models/deku_tree/Road end.png");
-  // addTextureOnThread("assets/models/deku_tree/mustache and eyebrows.png");
-  // addTextureOnThread("assets/models/deku_tree/deku tree skin.png");
-  // addTextureOnThread("assets/models/deku_tree/ground.png");
-  // addTextureOnThread("assets/models/deku_tree/Wall.png");
-
   addTextureOnThread("assets/maps/textures/test/grass.png");
-  addTextureOnThread("assets/maps/textures/test/wall.png");
   addTextureOnThread("assets/maps/textures/test/floor.png");
+  addTextureOnThread("assets/maps/textures/test/wall.png");
   addTextureOnThread("assets/maps/textures/test/tenman.png");
-  addTextureOnThread("assets/maps/textures/test/bayo2.png");
-  addTextureOnThread("assets/maps/textures/test/rocks.png");
 
   setTextureVerticalFlip(false);
   setTextureWrap(SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
   setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
 
-  addTextureOnThread("assets/textures/tree.png");
+  // addTextureOnThread("assets/textures/tree.png");
   addTextureOnThread("assets/textures/bayo.png");
+  addTextureOnThread("assets/textures/ishowspeed.png");
 }

@@ -9,7 +9,7 @@
 extern std::filesystem::path g_game_root;
 
 static struct TextureInfo {
-  std::map<std::string, Texture> hash;
+  std::unordered_map<std::string, Texture> hash;
 
   sg_filter min_filter;
   sg_filter max_filter;

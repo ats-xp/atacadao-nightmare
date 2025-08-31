@@ -4,10 +4,6 @@
 
 #include "state.hpp"
 
-#include "base.h"
-#undef S
-#include <PxPhysicsAPI.h>
-
 #include "fontstash.h"
 
 #include "billboard.hpp"
@@ -17,6 +13,7 @@
 #include "render.hpp"
 #include "shape.hpp"
 #include "map.hpp"
+#include "physics_manager.hpp"
 
 class Game : public State {
   Render m_render;
@@ -24,7 +21,7 @@ class Game : public State {
   Render m_render_sp; // Shape
 
   Player *m_player;
-  std::array<Billboard *, 2> m_boards;
+  std::vector<GameObject*> m_objects;
 
   Map m_map;
 
@@ -36,21 +33,7 @@ class Game : public State {
   f32 m_mouse_x = 0;
   f32 m_mouse_y = 0;
 
-  physx::PxDefaultAllocator m_allocator;
-  physx::PxDefaultErrorCallback m_error_callback;
-  physx::PxFoundation *m_foundation = nullptr;
-  physx::PxPhysics *m_physics = nullptr;
-  physx::PxDefaultCpuDispatcher *m_dispatcher = nullptr;
-  physx::PxScene *m_scene = nullptr;
-  physx::PxMaterial *m_material = nullptr;
-
-  physx::PxControllerManager *m_control_mgr;
-
-  std::vector<physx::PxRigidActor *> m_actors;
-
-  void initPhysX();
-  void stepSimulation(f32 dt);
-  void shutdownPhysX();
+  PhysicsManager m_physics;
 
   void initPipeline();
   void initTextures();

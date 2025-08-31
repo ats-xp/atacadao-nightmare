@@ -1,0 +1,16 @@
+// My Entities
+
+@BaseClass = GameObject
+[]
+
+@PointClass base(GameObject) size(-16 -16 -16, 16 16 16) color(0 255 0) =
+info_player_spawn : "Player Spawn Position"
+[
+  origin(string) : "World Position" : "0 0 0"
+]
+
+@PointClass base(GameObject) size(-16 -16 -16, 16 16 16) color(255 0 0) =
+info_enemy_spawn : "Enemy Spawn Position"
+[
+  origin(string) : "World Position" : "0 0 0"
+]

@@ -1,0 +1,103 @@
+// Game: Generic
+// Format: Standard
+// entity 0
+{
+"classname" "worldspawn"
+"_tb_def" "external:../scripts/atacadao.fgd"
+// brush 0
+{
+( 200 -296 56 ) ( 200 -400 -8 ) ( 200 -24 -8 ) test/floor 16 -8 0 1 1
+( 328 -400 56 ) ( 200 -400 -8 ) ( 200 -400 56 ) test/floor -8 -8 0 1 1
+( 328 -24 -8 ) ( 200 -400 -8 ) ( 328 -400 -8 ) test/floor -8 -16 0 1 1
+( 328 -296 56 ) ( 200 -400 56 ) ( 200 -296 56 ) test/floor -8 -16 0 1 1
+( 328 -24 -8 ) ( 200 -296 56 ) ( 200 -24 -8 ) test/floor -8.32859 5.593657 0 1 -4.2994413
+( 328 -24 -8 ) ( 328 -400 56 ) ( 328 -296 56 ) test/floor -5.625431 16.937967 0 1 2.3574872
+}
+// brush 1
+{
+( -576 -88 -8 ) ( -576 -87 -8 ) ( -576 -88 -7 ) test/grass 0 0 0 1 1
+( -24 -704 -8 ) ( -24 -704 -7 ) ( -23 -704 -8 ) test/grass 0 0 0 1 1
+( -24 -88 -32 ) ( -23 -88 -32 ) ( -24 -87 -32 ) test/grass 0 0 0 1 1
+( 56 8 -8 ) ( 56 9 -8 ) ( 57 8 -8 ) test/grass 0 0 0 1 1
+( 56 384 0 ) ( 57 384 0 ) ( 56 384 1 ) test/grass 0 0 0 1 1
+( 576 8 0 ) ( 576 8 1 ) ( 576 9 0 ) test/grass 0 0 0 1 1
+}
+// brush 2
+{
+( -496 -608 -16 ) ( -496 -607 -16 ) ( -496 -608 -15 ) test/floor 0 0 0 1 1
+( -496 -608 -16 ) ( -496 -608 -15 ) ( -495 -608 -16 ) test/floor 0 0 0 1 1
+( -496 -608 -16 ) ( -495 -608 -16 ) ( -496 -607 -16 ) test/floor 0 0 0 1 1
+( -224 -288 64 ) ( -224 -287 64 ) ( -223 -288 64 ) test/floor 0 0 0 1 1
+( -224 -288 0 ) ( -223 -288 0 ) ( -224 -288 1 ) test/floor 0 0 0 1 1
+( -224 -288 0 ) ( -224 -288 1 ) ( -224 -287 0 ) test/floor 0 0 0 1 1
+}
+// brush 3
+{
+( 36 -128 48 ) ( 36 -120 -8 ) ( 36 -120 48 ) __TB_empty 0 0 0 1 1
+( 68 -128 48 ) ( 36 -128 -8 ) ( 36 -128 48 ) __TB_empty 0 0 0 1 1
+( 68 -120 -8 ) ( 36 -128 -8 ) ( 68 -128 -8 ) test/wall 0 0 0 1 1
+( 68 -120 48 ) ( 36 -128 48 ) ( 36 -120 48 ) __TB_empty 0 0 0 1 1
+( 68 -120 48 ) ( 36 -120 -8 ) ( 68 -120 -8 ) __TB_empty 0 0 0 1 1
+( 68 -120 48 ) ( 68 -128 -8 ) ( 68 -128 48 ) __TB_empty 0 0 0 1 1
+}
+}
+// entity 1
+{
+"classname" "info_enemy_spawn"
+"origin" "-304 -416 104"
+}
+// entity 2
+{
+"classname" "info_player_spawn"
+"origin" "240 -352 72"
+}
+// entity 3
+{
+"classname" "info_enemy_spawn"
+"origin" "-96 -112 8"
+}
+// entity 4
+{
+"classname" "info_enemy_spawn"
+"origin" "-304 -160 8"
+}
+// entity 5
+{
+"classname" "info_enemy_spawn"
+"origin" "16 -192 8"
+}
+// entity 6
+{
+"classname" "info_enemy_spawn"
+"origin" "48 -304 256"
+}
+// entity 7
+{
+"classname" "info_enemy_spawn"
+"origin" "304 112 8"
+}
+// entity 8
+{
+"classname" "info_enemy_spawn"
+"origin" "32 144 8"
+}
+// entity 9
+{
+"classname" "info_enemy_spawn"
+"origin" "-320 112 8"
+}
+// entity 10
+{
+"classname" "info_enemy_spawn"
+"origin" "432 240 8"
+}
+// entity 11
+{
+"classname" "info_enemy_spawn"
+"origin" "-368 240 8"
+}
+// entity 12
+{
+"classname" "info_enemy_spawn"
+"origin" "256 10 280"
+}

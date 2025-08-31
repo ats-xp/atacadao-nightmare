@@ -10,6 +10,7 @@ src_dir = files(
   'render.cpp',
   'billboard.cpp',
   'map.cpp',
+  'physics_manager.cpp',
   'sokol_impl.c',
   'base_impl.c',
   'stb_impl.c',

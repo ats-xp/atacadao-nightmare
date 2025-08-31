@@ -55,8 +55,9 @@ void Model::init(const char *path) {
   m_transformition.position = glm::vec3(0.0f);
   m_transformition.scale = glm::vec3(1.0f);
 
-  u32 flags =
-      aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_GenNormals;
+  u32 flags = aiProcess_Triangulate | aiProcess_CalcTangentSpace |
+              aiProcess_GenNormals | aiProcess_OptimizeMeshes |
+              aiProcess_SplitLargeMeshes | aiProcess_OptimizeGraph;
 
   Assimp::Importer imp;
 

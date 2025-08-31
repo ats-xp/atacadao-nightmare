@@ -66,7 +66,7 @@ if sokol_shdc.found()
   endforeach
 endif
 
-subdir('assets/maps')
+# subdir('assets/maps')
 subdir('source')
 
 src_dir += shd
