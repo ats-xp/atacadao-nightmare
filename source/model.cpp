@@ -5,6 +5,8 @@
  */
 #include "model.hpp"
 
+#include "asset_manager.hpp"
+
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
@@ -13,10 +15,7 @@
 #include "stb_image.h"
 
 #include "default.glsl.h"
-
-#include <filesystem>
-
-extern std::filesystem::path g_game_root;
+#include "map.glsl.h"
 
 Model::Model(const char *path) { init(path); }
 
@@ -56,12 +55,11 @@ void Model::init(const char *path) {
   m_transformition.scale = glm::vec3(1.0f);
 
   u32 flags = aiProcess_Triangulate | aiProcess_CalcTangentSpace |
-              aiProcess_GenNormals | aiProcess_OptimizeMeshes |
-              aiProcess_SplitLargeMeshes | aiProcess_OptimizeGraph;
+              aiProcess_GenNormals;
 
   Assimp::Importer imp;
 
-  std::string path_root = g_game_root / path;
+  std::string path_root = AssetManager::getPath(path);
   LogInfo("Processing model: %s", path_root.c_str());
 
   const aiScene *scene = imp.ReadFile(path_root.c_str(), flags);
@@ -87,10 +85,31 @@ void Model::draw(Camera &cam) {
   vs_params_t vs_params = {};
   vs_params.mvp = cam.getMatrix() * model;
 
+  int count = 0;
+
   for (Mesh &m : m_meshes) {
-    m.bind(IMG_tex, SMP_smp);
+    // m.bind(IMG_tex, SMP_smp);
+    sg_bindings bind = {};
+    bind.vertex_buffers[0] = m.m_vbo;
+    bind.index_buffer = m.m_ebo;
+
+    Texture t = AssetManager::getTextureFromID(
+        AssetManager::getTextureIDFromPath(m.m_textures_path[0]));
+
+    bind.images[IMG_tex] = t.img;
+    bind.samplers[SMP_smp] = t.smp;
+
+    std::string name = "test-lightmap" + std::to_string(count);
+    Texture l = AssetManager::getTextureFromID(name.c_str());
+    bind.images[IMG_tex_lm] = l.img;
+    bind.samplers[SMP_smp_lm] = l.smp;
+
+    sg_apply_bindings(&bind);
+
     sg_apply_uniforms(UB_vs_params, SG_RANGE_REF(vs_params));
     m.draw();
+
+    count++;
   }
 }
 
@@ -186,9 +205,10 @@ Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, u8 tex_type) {
     mat->GetTexture(type, i, &str);
 
     // Texture &tex = getTextureFromID(getTextureIDFromPath(str.C_Str()));
-    std::string path = getTextureIDFromPath(str.C_Str());
+    std::string path = AssetManager::getTextureIDFromPath(str.C_Str());
 
     ids.push_back(path);
+    ids.push_back("test-lightmap.png");
   }
 
   return ids;

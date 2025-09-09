@@ -71,5 +71,5 @@ public:
     m_transformition = trans;
   }
 
-  constexpr const std::vector<Mesh> &getMeshes() const { return m_meshes; }
+  constexpr std::vector<Mesh> &getMeshes() { return m_meshes; }
 };

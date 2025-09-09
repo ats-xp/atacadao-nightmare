@@ -15,13 +15,15 @@
 #include "map.hpp"
 #include "physics_manager.hpp"
 
+class DummyObject;
+
 class Game : public State {
   Render m_render;
   Render m_render_bb; // billboard
   Render m_render_sp; // Shape
 
   Player *m_player;
-  std::vector<GameObject*> m_objects;
+  std::vector<DummyObject*> m_objects;
 
   Map m_map;
 

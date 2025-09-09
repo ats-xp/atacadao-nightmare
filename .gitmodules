@@ -25,3 +25,6 @@
 [submodule "vendor/lightmapper"]
 	path = vendor/lightmapper
 	url = https://github.com/ands/lightmapper.git
+[submodule "vendor/xatlas"]
+	path = vendor/xatlas
+	url = https://github.com/jpcy/xatlas.git

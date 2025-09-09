@@ -46,6 +46,25 @@ public:
     return mgr.m_control->createController(desc);
   }
 
+  template <typename T>
+  static physx::PxController *create(PhysicsManager &mgr, const f32 &width,
+                                     const f32 &height, const f32 &depth,
+                                     const physx::PxExtendedVec3 &pos) {
+    T desc;
+    desc.halfSideExtent = width / 2.0f;
+    desc.halfHeight = height / 2.0f;
+    desc.halfForwardExtent = depth / 2.0f;
+    desc.position = pos;
+    desc.material = mgr.m_material;
+    desc.contactOffset = (desc.halfSideExtent + desc.halfForwardExtent) * 0.1f;
+    desc.stepOffset = desc.halfHeight * 0.25f;
+    desc.slopeLimit = cosf(physx::PxPi / 4);
+    desc.nonWalkableMode =
+        physx::PxControllerNonWalkableMode::ePREVENT_CLIMBING;
+
+    return mgr.m_control->createController(desc);
+  }
+
   static bool step(physx::PxController *ctrl, f32 dt, physx::PxVec3 &vel) {
     physx::PxControllerFilters filters;
     physx::PxVec3 disp = vel * dt;

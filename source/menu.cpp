@@ -1,5 +1,5 @@
 #include "menu.hpp"
-
+#include "asset_manager.hpp"
 #include "input.hpp"
 
 #include "sokol_gfx.h"
@@ -7,12 +7,9 @@
 #include "sokol_fontstash.h"
 #include "sokol_gl.h"
 
-#include <filesystem>
-extern std::filesystem::path g_game_root;
-
 Menu::Menu() {
   {
-    std::string path = g_game_root / "assets/fonts/daydream/Daydream.ttf";
+    std::string path = AssetManager::getPath("assets/fonts/daydream/Daydream.ttf");
 
     sfons_desc_t desc = {};
     desc.width = 512;

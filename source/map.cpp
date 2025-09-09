@@ -1,4 +1,5 @@
 #include "map.hpp"
+#include "asset_manager.hpp"
 
 #include <fstream>
 #include <iomanip>
@@ -9,9 +10,6 @@
 #include "physx_utils.hpp"
 
 #include <cooking/PxCooking.h>
-
-#include <filesystem>
-extern std::filesystem::path g_game_root;
 
 TBMap loadMap(const std::string &filename);
 
@@ -77,7 +75,7 @@ void Map::setupPhysics(PhysicsManager &mgr) {
 TBMap loadMap(const std::string &filename) {
   TBMap map;
 
-  std::ifstream file(g_game_root / filename);
+  std::ifstream file(AssetManager::getPath(filename));
   if (!file.is_open()) {
     LogError(".map file not loaded");
     abort();

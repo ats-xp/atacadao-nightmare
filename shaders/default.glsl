@@ -32,8 +32,7 @@ void main() {
   if (tex_color.a < 0.1)
     discard;
 
-  FragColor = texture(sampler2D(tex, smp), tex_coords);
-  // FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+  FragColor = tex_color;
 }
 @end
 

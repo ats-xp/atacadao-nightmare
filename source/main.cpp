@@ -23,8 +23,9 @@
 #include "input.hpp"
 #include "menu.hpp"
 
+#include "asset_manager.hpp"
+
 Input inp;
-std::filesystem::path g_game_root;
 
 static struct {
   /*
@@ -44,17 +45,11 @@ static struct {
 } state;
 
 static void init() {
-  char exe_path[PATH_MAX];
-  ssize_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
-  (void)count;
-  g_game_root = exe_path;
-  g_game_root = g_game_root.parent_path() / "../";
-
   {
     sg_desc desc = {};
     desc.environment = sglue_environment();
     desc.logger.func = slog_func;
-    desc.buffer_pool_size = 256;
+    desc.buffer_pool_size = 128;
     // desc.sampler_pool_size = 128;
     desc.allocator.alloc_fn = smemtrack_alloc,
     desc.allocator.free_fn = smemtrack_free;
@@ -70,6 +65,8 @@ static void init() {
   stm_setup();
 
   state.last_time = stm_now();
+
+  AssetManager::init();
 
   state.st = std::make_unique<Menu>();
   sapp_lock_mouse(true);

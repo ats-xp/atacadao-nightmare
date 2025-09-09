@@ -1,4 +1,6 @@
 #include "game.hpp"
+#include "asset_manager.hpp"
+#include "dummy.hpp"
 
 #include "sokol_app.h"
 #include "sokol_fetch.h"
@@ -8,13 +10,9 @@
 #include "sokol_gl.h"
 
 #include "billboard.glsl.h"
-#include "default.glsl.h"
-#include "shape.glsl.h"
+#include "map.glsl.h"
 
-#include "dummy.hpp"
-
-#include <filesystem>
-extern std::filesystem::path g_game_root;
+#include <fstream>
 
 Game::Game() {
   {
@@ -24,8 +22,8 @@ Game::Game() {
     desc.height = 512 * dpi;
     m_font_ctx = sfons_create(&desc);
 
-    std::string path = g_game_root / "assets/fonts/daydream/Daydream.ttf";
-
+    std::string path =
+        AssetManager::getPath("assets/fonts/daydream/Daydream.ttf");
     m_font_normal = fonsAddFont(m_font_ctx, "normal", path.c_str());
   }
 
@@ -39,7 +37,6 @@ Game::Game() {
   }
 
   initPipeline();
-  initTexturePool();
   initTextures();
 
   m_physics.init();
@@ -51,11 +48,11 @@ Game::Game() {
   m_cam.setViewport(sapp_widthf(), sapp_heightf());
   m_cam.setDistance(0.01f, 3000.0f);
 
-  m_player = new Player(m_map.getAttributeVec3("info_player_spawn"));
-  m_player->m_control =
-      PhysicsGameObject::create<physx::PxCapsuleControllerDesc>(
-          m_physics, 56.0f - 2 * 16, 32.0f / 2,
-          glmToPxExtendedVec3(m_player->m_pos));
+  TBEntity ent = m_map.map.getEntity("info_player_spawn");
+  m_player = new Player(Map::parserStringToVec3(ent.getProperty("origin")));
+  m_player->m_control = PhysicsGameObject::create<physx::PxBoxControllerDesc>(
+      // m_physics, 56.0f - 2 * 16, 32.0f / 2,
+      m_physics, 32.0f, 56.0f, 32.0f, glmToPxExtendedVec3(m_player->m_pos));
 
   std::vector<TBEntity> entities = m_map.map.getEntityList("info_enemy_spawn");
 
@@ -90,6 +87,7 @@ void Game::update(f32 dt) {
   m_player->update(dt);
 
   for (auto o : m_objects) {
+    o->chaseTarget(*m_player);
     o->update(dt);
   }
 }
@@ -155,14 +153,17 @@ void Game::initPipeline() {
     desc.colors[0].blend = blend_state;
 
     desc.layout.buffers[0].stride = sizeof(Vertex);
-    desc.layout.attrs[ATTR_default_apos].format = SG_VERTEXFORMAT_FLOAT3;
-    desc.layout.attrs[ATTR_default_anormal].format = SG_VERTEXFORMAT_FLOAT3;
-    desc.layout.attrs[ATTR_default_atex_coords].format = SG_VERTEXFORMAT_FLOAT2;
+    desc.layout.attrs[ATTR_map_apos].format = SG_VERTEXFORMAT_FLOAT3;
+    desc.layout.attrs[ATTR_map_anormal].format = SG_VERTEXFORMAT_FLOAT3;
+    desc.layout.attrs[ATTR_map_atex_coords].format = SG_VERTEXFORMAT_FLOAT2;
+    desc.layout.attrs[ATTR_map_alightmap_coords].format =
+        SG_VERTEXFORMAT_FLOAT2;
+
     desc.index_type = SG_INDEXTYPE_UINT16;
     desc.cull_mode = SG_CULLMODE_FRONT;
     desc.depth.write_enabled = true;
     desc.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
-    m_render.init(desc, default_shader_desc(sg_query_backend()));
+    m_render.init(desc, map_shader_desc(sg_query_backend()));
   }
 
   {
@@ -195,38 +196,34 @@ void Game::initPipeline() {
     desc.depth.write_enabled = true;
     m_render_bb.init(desc, billboard_shader_desc(sg_query_backend()));
   }
-
-  {
-    sg_pipeline_desc desc = {};
-
-    desc.layout.buffers[0] = sshape_vertex_buffer_layout_state();
-    desc.layout.attrs[ATTR_shape_apos] = sshape_position_vertex_attr_state();
-    desc.layout.attrs[ATTR_shape_acolor] = sshape_color_vertex_attr_state();
-    desc.primitive_type = SG_PRIMITIVETYPE_LINE_STRIP;
-    desc.index_type = SG_INDEXTYPE_UINT16;
-    desc.cull_mode = SG_CULLMODE_FRONT;
-    desc.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
-    desc.depth.write_enabled = true;
-
-    m_render_sp.init(desc, shape_shader_desc(sg_query_backend()));
-  }
 }
 
 void Game::initTextures() {
-  setTextureVerticalFlip(true);
-  setTextureWrap(SG_WRAP_REPEAT, SG_WRAP_REPEAT);
-  setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
+  AssetManager::setTextureVerticalFlip(true);
+  AssetManager::setTextureWrap(SG_WRAP_REPEAT, SG_WRAP_REPEAT);
+  AssetManager::setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
 
-  addTextureOnThread("assets/maps/textures/test/grass.png");
-  addTextureOnThread("assets/maps/textures/test/floor.png");
-  addTextureOnThread("assets/maps/textures/test/wall.png");
-  addTextureOnThread("assets/maps/textures/test/tenman.png");
+  std::ifstream file(AssetManager::getPath("load_textures.txt"));
+  if (file.is_open()) {
+    std::string line;
+    while (std::getline(file, line)) {
+      AssetManager::addTextureOnThread(line.c_str());
+    }
+  }
 
-  setTextureVerticalFlip(false);
-  setTextureWrap(SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
-  setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
+  AssetManager::setTextureWrap(SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
+  for (int i = 0; i < 46; i++) {
+    std::string name = "assets/maps/textures/test/test-lightmap.tga";
+    name = name.substr(0, name.find_last_of("."));
+    name += std::to_string(i) + ".tga";
+    AssetManager::addTextureOnThread(name.c_str());
+  }
+
+  AssetManager::setTextureVerticalFlip(false);
+  AssetManager::setTextureWrap(SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
+  AssetManager::setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
 
   // addTextureOnThread("assets/textures/tree.png");
-  addTextureOnThread("assets/textures/bayo.png");
-  addTextureOnThread("assets/textures/ishowspeed.png");
+  AssetManager::addTextureOnThread("assets/textures/bayo.png");
+  AssetManager::addTextureOnThread("assets/textures/ishowspeed.png");
 }

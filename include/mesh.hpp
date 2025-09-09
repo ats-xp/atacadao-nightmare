@@ -38,6 +38,7 @@ struct Vertex {
   glm::vec3 pos;
   glm::vec3 normal;
   glm::vec2 tex_coords;
+  glm::vec2 lightmap_coords;
 };
 
 struct Texture {
@@ -51,22 +52,6 @@ struct Texture {
     sg_destroy_image(img);
   }
 };
-
-void initTexturePool();
-Texture loadTexture(const char *filename, TextureType tex_type = DIFFUSE);
-void addTexture(const char *path);
-void addTextureOnThread(const char *path);
-
-void setTextureFilter(sg_filter min, sg_filter max);
-void setTextureWrap(sg_wrap u, sg_wrap v);
-void setTextureVerticalFlip(bool flip);
-
-const std::string getTextureIDFromPath(const std::string &path);
-Texture &getTextureFromID(const std::string &id);
-const u16 &getTextureRequests(void);
-
-bool isTexture(const std::string &id);
-void destroyTexture(std::string id); // Warning: inutil
 
 class Mesh {
 public:
