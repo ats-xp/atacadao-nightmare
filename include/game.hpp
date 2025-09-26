@@ -1,7 +1,5 @@
 #pragma once
 
-#include <array>
-
 #include "state.hpp"
 
 #include "fontstash.h"
@@ -18,10 +16,6 @@
 class DummyObject;
 
 class Game : public State {
-  Render m_render;
-  Render m_render_bb; // billboard
-  Render m_render_sp; // Shape
-
   Player *m_player;
   std::vector<DummyObject*> m_objects;
 
@@ -37,7 +31,6 @@ class Game : public State {
 
   PhysicsManager m_physics;
 
-  void initPipeline();
   void initTextures();
 
 public:
@@ -46,5 +39,5 @@ public:
 
   void update(f32 dt) override;
   void render() override;
-  void handleEvent(const sapp_event *e) override;
+  void handleEvent(const SDL_Event *e) override;
 };

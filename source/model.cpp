@@ -40,6 +40,8 @@ Model &Model::operator=(Model &&other) {
 }
 
 Model::~Model() {
+  m_vao.destroy();
+
   for (auto m : m_meshes) {
     m.destroy();
   }
@@ -54,8 +56,8 @@ void Model::init(const char *path) {
   m_transformition.position = glm::vec3(0.0f);
   m_transformition.scale = glm::vec3(1.0f);
 
-  u32 flags = aiProcess_Triangulate | aiProcess_CalcTangentSpace |
-              aiProcess_GenNormals;
+  u32 flags =
+      aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_GenNormals;
 
   Assimp::Importer imp;
 
@@ -85,31 +87,20 @@ void Model::draw(Camera &cam) {
   vs_params_t vs_params = {};
   vs_params.mvp = cam.getMatrix() * model;
 
-  int count = 0;
-
   for (Mesh &m : m_meshes) {
-    // m.bind(IMG_tex, SMP_smp);
-    sg_bindings bind = {};
-    bind.vertex_buffers[0] = m.m_vbo;
-    bind.index_buffer = m.m_ebo;
-
     Texture t = AssetManager::getTextureFromID(
         AssetManager::getTextureIDFromPath(m.m_textures_path[0]));
 
-    bind.images[IMG_tex] = t.img;
-    bind.samplers[SMP_smp] = t.smp;
+    sg_range range = SG_RANGE_REF(vs_params);
 
-    std::string name = "test-lightmap" + std::to_string(count);
-    Texture l = AssetManager::getTextureFromID(name.c_str());
-    bind.images[IMG_tex_lm] = l.img;
-    bind.samplers[SMP_smp_lm] = l.smp;
+    sg_bindings bind = {};
+    bind.vertex_buffers[0] = m.m_vbo.getBuffer();
+    bind.index_buffer = m.m_ebo.getBuffer();
+    bind.images[0] = t.img;
+    bind.samplers[0] = t.smp;
+    m_vao.use();
 
-    sg_apply_bindings(&bind);
-
-    sg_apply_uniforms(UB_vs_params, SG_RANGE_REF(vs_params));
-    m.draw();
-
-    count++;
+    m.draw(bind, 0, &range);
   }
 }
 

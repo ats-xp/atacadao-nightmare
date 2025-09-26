@@ -12,10 +12,13 @@ class Billboard {
 public:
   glm::vec3 m_pos{0.0f, 0.0f, 0.0f};
 
+  VAO m_vao;
+
   Billboard(const char *texture);
   ~Billboard();
 
   void draw(Camera &cam);
 
   constexpr void setPosition(const glm::vec3 &pos) { m_pos = pos; }
+  constexpr Mesh &getMesh() const {return *m_mesh;}
 };

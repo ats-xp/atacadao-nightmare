@@ -28,6 +28,8 @@ class Model {
 public:
   Transform m_transformition;
 
+  VAO m_vao;
+
   Model(const char *path);
 
   Model(const Model &other);

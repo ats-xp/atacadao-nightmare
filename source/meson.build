@@ -11,9 +11,17 @@ src_dir = files(
   'billboard.cpp',
   'map.cpp',
   'dummy.cpp',
+  'bullet.cpp',
   'physics_manager.cpp',
   'asset_manager.cpp',
+  'sprite_anim.cpp',
+
+  'sdl2_glue.cpp',
+
   'sokol_impl.c',
   'base_impl.c',
   'stb_impl.c',
+
+  'editor/lightmap.cpp',
+  'editor/glad.c',
   )

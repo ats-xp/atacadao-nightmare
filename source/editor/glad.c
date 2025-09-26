@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "glad/glad.h"
+#include <glad/glad.h>
 
 struct gladGLversionStruct GLVersion;
 

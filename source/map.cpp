@@ -11,10 +11,36 @@
 
 #include <cooking/PxCooking.h>
 
+#include "map.glsl.h"
+
 TBMap loadMap(const std::string &filename);
 
 void Map::init(const char *path) {
+  sg_pipeline_desc desc = {};
+  sg_blend_state blend_state = {};
+
+  blend_state.enabled = true;
+  blend_state.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA;
+  blend_state.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+  blend_state.src_factor_alpha = SG_BLENDFACTOR_ZERO;
+  blend_state.dst_factor_alpha = SG_BLENDFACTOR_ONE;
+
+  desc.colors[0].blend = blend_state;
+
+  desc.layout.buffers[0].stride = sizeof(Vertex);
+  desc.layout.attrs[ATTR_map_apos].format = SG_VERTEXFORMAT_FLOAT3;
+  desc.layout.attrs[ATTR_map_anormal].format = SG_VERTEXFORMAT_FLOAT3;
+  desc.layout.attrs[ATTR_map_atex_coords].format = SG_VERTEXFORMAT_FLOAT2;
+  desc.layout.attrs[ATTR_map_alightmap_coords].format = SG_VERTEXFORMAT_FLOAT2;
+
+  desc.index_type = SG_INDEXTYPE_UINT16;
+  desc.cull_mode = SG_CULLMODE_FRONT;
+  desc.depth.write_enabled = true;
+  desc.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
+
   model = new Model(path);
+  model->m_vao.create(desc, map_shader_desc(sg_query_backend()));
+
   map = loadMap("assets/maps/test/test.map");
 }
 

@@ -2,22 +2,20 @@
 #include "asset_manager.hpp"
 #include "dummy.hpp"
 
-#include "sokol_app.h"
+#include "sdl2_glue.hpp"
+
 #include "sokol_fetch.h"
 #include "sokol_log.h"
 
 #include "sokol_fontstash.h"
 #include "sokol_gl.h"
 
-#include "billboard.glsl.h"
-#include "map.glsl.h"
-
 #include <fstream>
 
 Game::Game() {
   {
     sfons_desc_t desc = {};
-    f32 dpi = sapp_dpi_scale();
+    f32 dpi = 1;
     desc.width = 512 * dpi;
     desc.height = 512 * dpi;
     m_font_ctx = sfons_create(&desc);
@@ -31,12 +29,11 @@ Game::Game() {
     sfetch_desc_t desc = {};
     desc.max_requests = 128;
     desc.num_channels = 1;
-    desc.num_lanes = 1;
+    desc.num_lanes = 4;
     desc.logger.func = slog_func;
     sfetch_setup(&desc);
   }
 
-  initPipeline();
   initTextures();
 
   m_physics.init();
@@ -45,7 +42,7 @@ Game::Game() {
   m_map.setupPhysics(m_physics);
 
   m_cam.init(glm::vec3(-12.861005, 1.293806, 0.921208));
-  m_cam.setViewport(sapp_widthf(), sapp_heightf());
+  m_cam.setViewport(sdl2_width(), sdl2_height());
   m_cam.setDistance(0.01f, 3000.0f);
 
   TBEntity ent = m_map.map.getEntity("info_player_spawn");
@@ -96,9 +93,9 @@ void Game::render() {
   {
     sgl_defaults();
     sgl_matrix_mode_projection();
-    sgl_ortho(0.0f, sapp_widthf(), sapp_heightf(), 0.0f, -1.0f, 1.0f);
+    sgl_ortho(0.0f, sdl2_width(), sdl2_height(), 0.0f, -1.0f, 1.0f);
 
-    f32 dpi = sapp_dpi_scale();
+    f32 dpi = 1;
     f32 sx = 50 * dpi, sy = 50 * dpi;
     f32 dx = sx, dy = sy;
 
@@ -111,90 +108,21 @@ void Game::render() {
   }
 
   // All 3D Render
-  m_render.use();
-  {
-    m_player->draw(m_cam);
-    m_map.draw(m_cam);
-  }
+  m_player->draw(m_cam);
+  m_map.draw(m_cam);
 
-  m_render_bb.use();
-  {
-    for (auto o : m_objects) {
-      o->draw(m_cam);
-    }
+  for (auto o : m_objects) {
+    o->draw(m_cam);
   }
 
   sgl_draw();
 }
 
-void Game::handleEvent(const sapp_event *e) {
-  if (e->type == SAPP_EVENTTYPE_MOUSE_MOVE) {
-    m_mouse_x += e->mouse_dx;
-    m_mouse_y += e->mouse_dy;
+void Game::handleEvent(const SDL_Event *e) {
+  if (e->type == SDL_MOUSEMOTION) {
+    m_mouse_x += e->motion.xrel;
+    m_mouse_y += e->motion.yrel;
     m_cam.updateMouse(m_mouse_x, m_mouse_y);
-  }
-
-  if (e->type == SAPP_EVENTTYPE_FOCUSED) {
-    sapp_lock_mouse(true);
-  }
-}
-
-void Game::initPipeline() {
-  {
-    sg_pipeline_desc desc = {};
-
-    sg_blend_state blend_state = {};
-    blend_state.enabled = true;
-    blend_state.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA;
-    blend_state.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-    blend_state.src_factor_alpha = SG_BLENDFACTOR_ZERO;
-    blend_state.dst_factor_alpha = SG_BLENDFACTOR_ONE;
-
-    desc.colors[0].blend = blend_state;
-
-    desc.layout.buffers[0].stride = sizeof(Vertex);
-    desc.layout.attrs[ATTR_map_apos].format = SG_VERTEXFORMAT_FLOAT3;
-    desc.layout.attrs[ATTR_map_anormal].format = SG_VERTEXFORMAT_FLOAT3;
-    desc.layout.attrs[ATTR_map_atex_coords].format = SG_VERTEXFORMAT_FLOAT2;
-    desc.layout.attrs[ATTR_map_alightmap_coords].format =
-        SG_VERTEXFORMAT_FLOAT2;
-
-    desc.index_type = SG_INDEXTYPE_UINT16;
-    desc.cull_mode = SG_CULLMODE_FRONT;
-    desc.depth.write_enabled = true;
-    desc.depth.compare = SG_COMPAREFUNC_LESS_EQUAL;
-    m_render.init(desc, map_shader_desc(sg_query_backend()));
-  }
-
-  {
-    sg_pipeline_desc desc = {};
-
-    sg_blend_state blend_state = {};
-    blend_state.enabled = true;
-    blend_state.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA;
-    blend_state.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-    blend_state.src_factor_alpha = SG_BLENDFACTOR_ZERO;
-    blend_state.dst_factor_alpha = SG_BLENDFACTOR_ONE;
-
-    desc.colors[0].blend = blend_state;
-
-    desc.layout.buffers[0].stride = sizeof(Vertex);
-
-    desc.layout.attrs[ATTR_billboard_apos].format = SG_VERTEXFORMAT_FLOAT3;
-    desc.layout.attrs[ATTR_billboard_apos].offset = 0;
-
-    desc.layout.attrs[ATTR_billboard_atex_coords].format =
-        SG_VERTEXFORMAT_FLOAT2;
-    desc.layout.attrs[ATTR_billboard_atex_coords].offset =
-        offsetof(Vertex, tex_coords);
-
-    // desc.layout.attrs[ATTR_default_anormal].format = SG_VERTEXFORMAT_FLOAT3;
-
-    desc.index_type = SG_INDEXTYPE_UINT16;
-    desc.cull_mode = SG_CULLMODE_BACK;
-    desc.depth.compare = SG_COMPAREFUNC_LESS;
-    desc.depth.write_enabled = true;
-    m_render_bb.init(desc, billboard_shader_desc(sg_query_backend()));
   }
 }
 
@@ -211,14 +139,6 @@ void Game::initTextures() {
     }
   }
 
-  AssetManager::setTextureWrap(SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
-  for (int i = 0; i < 46; i++) {
-    std::string name = "assets/maps/textures/test/test-lightmap.tga";
-    name = name.substr(0, name.find_last_of("."));
-    name += std::to_string(i) + ".tga";
-    AssetManager::addTextureOnThread(name.c_str());
-  }
-
   AssetManager::setTextureVerticalFlip(false);
   AssetManager::setTextureWrap(SG_WRAP_CLAMP_TO_EDGE, SG_WRAP_CLAMP_TO_EDGE);
   AssetManager::setTextureFilter(SG_FILTER_NEAREST, SG_FILTER_NEAREST);
@@ -226,4 +146,6 @@ void Game::initTextures() {
   // addTextureOnThread("assets/textures/tree.png");
   AssetManager::addTextureOnThread("assets/textures/bayo.png");
   AssetManager::addTextureOnThread("assets/textures/ishowspeed.png");
+  AssetManager::addTextureOnThread("assets/textures/bullet.png");
+  AssetManager::addTextureOnThread("assets/textures/anim.png");
 }

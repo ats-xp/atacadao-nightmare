@@ -74,10 +74,10 @@ struct TBMap {
 
 struct Map {
 private:
-  Model *model = nullptr;
 
 public:
   TBMap map = {};
+  Model *model = nullptr;
 
   void init(const char *path);
   void destroy();

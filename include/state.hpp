@@ -4,7 +4,7 @@
 
 #include "base.h"
 
-#include "sokol_app.h"
+#include <SDL2/SDL.h>
 
 enum StateId : u8 {
   OFF = 0,
@@ -17,7 +17,7 @@ class StateInterface {
 public:
   virtual void update(f32 dt) = 0;
   virtual void render() = 0;
-  virtual void handleEvent(const sapp_event *e) = 0;
+  virtual void handleEvent(const SDL_Event *e) = 0;
 };
 
 class State : public StateInterface {
@@ -32,7 +32,7 @@ public:
 
   void update(f32 dt) override {}
   void render() override {}
-  void handleEvent(const sapp_event *e) override {};
+  void handleEvent(const SDL_Event *e) override {};
 
   inline void setNext(u8 n) { m_next = n; };
 

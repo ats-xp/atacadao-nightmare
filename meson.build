@@ -13,11 +13,14 @@ physx_lib_dir = meson.current_source_dir() + '/vendor/PhysX/physx/bin/linux.x86_
 xatlas_lib_dir = meson.current_source_dir() + '/vendor/xatlas/build/gmake/bin/x86_64/Release'
 
 dependencies = [
+  dependency('sdl2-compat'),
+
   dependency('x11'),
   dependency('xi'),
   dependency('xcursor'),
-  dependency('gl'),
 
+  dependency('gl'),
+  dependency('glfw3'),
   dependency('assimp'),
 
   cc.find_library('glm', dirs : glm_lib_dir),
@@ -44,6 +47,8 @@ inc += include_directories('vendor/glm/glm/')
 inc += include_directories('vendor/stb')
 inc += include_directories('vendor/PhysX/physx/include')
 inc += include_directories('vendor/xatlas/source/xatlas')
+
+inc += include_directories('include/editor')
 
 sokol_shdc = find_program('sokol-shdc', 'vendor/sokol-tools-bin/bin/linux', required: true)
 shd = []
@@ -73,31 +78,6 @@ endif
 # subdir('assets/maps')
 subdir('source')
 src_dir += shd
-
-subdir('source/editor/lightmapper')
-lightmapper_inc = [
-  include_directories('include/editor/lightmapper'),
-  include_directories('vendor/lightmapper'),
-  include_directories('vendor/glm/glm/'),
-  include_directories('vendor/xatlas/source/xatlas'),
-  include_directories('vendor/base/'),
-  include_directories('include'),
-]
-lightmapper_dep = [
-  dependency('gl'),
-  dependency('glfw3'),
-  dependency('assimp'),
-  cc.find_library('glm', dirs : glm_lib_dir),
-  cc.find_library('xatlas_static', dirs : xatlas_lib_dir),
-  ]
-
-lightmapper_exe = executable(
-  'lightmapper',
-  lightmapper_src_dir,
-  include_directories : lightmapper_inc,
-  dependencies : lightmapper_dep,
-  install : false,
-)
 
 exe = executable(
   'atacadao',

@@ -11,8 +11,7 @@
 
 #include "camera.hpp"
 
-class Shader;
-struct RenderBuffer;
+#include "render.hpp"
 
 enum TextureType : u8 {
   DIFFUSE = 0,
@@ -64,8 +63,8 @@ public:
     std::vector<f32> m_lightmap;
   };
 
-  sg_buffer m_vbo;
-  sg_buffer m_ebo;
+  VBO m_vbo;
+  EBO m_ebo;
 
   Mesh(std::vector<Vertex> vertices, std::vector<u16> indices,
        std::vector<std::string> textures_path);
@@ -77,7 +76,7 @@ public:
 
   ~Mesh();
 
-  void draw();
+  void draw(sg_bindings &bind, int ub_slot, const sg_range *data);
   void destroy();
 
   void bind(u16 img, u16 smp);

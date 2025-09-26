@@ -40,10 +40,9 @@ void main() {
   if (diffuse.a < 0.1)
     discard;
 
-  vec3 color = diffuse.rgb * lightmap.rgb;
-
-  FragColor = vec4(color, 1.0);
-  // FragColor = diffuse;
+  // vec3 color = diffuse.rgb * lightmap.rgb;
+  // FragColor = vec4(color, 1.0);
+  FragColor = diffuse;
 }
 @end
 

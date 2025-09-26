@@ -38,18 +38,8 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<u16> indices,
 
   xatlas::Destroy(atlas);
 
-  sg_buffer_desc vbuf_desc = {};
-  vbuf_desc.data.ptr = m_vertices.data();
-  vbuf_desc.data.size = m_vertices.size() * sizeof(Vertex);
-
-  m_vbo = sg_make_buffer(&vbuf_desc);
-
-  sg_buffer_desc ibuf_desc = {};
-  ibuf_desc.usage.index_buffer = true;
-  ibuf_desc.data.ptr = m_indices.data();
-  ibuf_desc.data.size = m_indices.size() * sizeof(u16);
-
-  m_ebo = sg_make_buffer(&ibuf_desc);
+  m_vbo.create(m_vertices.data(), m_vertices.size() * sizeof(Vertex));
+  m_ebo.create(m_indices.data(), m_indices.size() * sizeof(u16));
 }
 
 Mesh::Mesh(const Mesh &other)
@@ -84,26 +74,19 @@ Mesh &Mesh::operator=(Mesh &&other) noexcept {
 
 Mesh::~Mesh() {}
 
-void Mesh::draw() { sg_draw(0, m_indices.size() * 3, 1); }
+void Mesh::draw(sg_bindings &bind, int ub_slot, const sg_range *data) {
+  sg_apply_bindings(&bind);
+  if (data != nullptr) 
+    sg_apply_uniforms(ub_slot, data);
+
+  sg_draw(0, m_indices.size() * 3, 1);
+}
 
 void Mesh::destroy() {
-  sg_destroy_buffer(m_ebo);
-  sg_destroy_buffer(m_vbo);
+  m_vbo.destroy();
+  m_ebo.destroy();
 
   for (Texture &t : m_textures) {
     t.destroy();
   }
-}
-
-void Mesh::bind(u16 img, u16 smp) {
-  sg_bindings bind = {};
-  bind.vertex_buffers[0] = m_vbo;
-  bind.index_buffer = m_ebo;
-
-  Texture &t = AssetManager::getTextureFromID(AssetManager::getTextureIDFromPath(m_textures_path[0]));
-
-  bind.images[img] = t.img;
-  bind.samplers[smp] = t.smp;
-
-  sg_apply_bindings(&bind);
 }

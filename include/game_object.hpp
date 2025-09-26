@@ -14,9 +14,9 @@ class GameObjectInterface {
 
 class GameObject : public GameObjectInterface {
   protected:
-  Billboard *m_sprite;
 
   public:
+  Billboard *m_sprite;
   glm::vec3 m_pos;
 
   GameObject() {}

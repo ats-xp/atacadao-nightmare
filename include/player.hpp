@@ -11,9 +11,14 @@
 
 #include "game_object.hpp"
 
+class Bullet;
+
 class Player : public GameObject {
 public:
   // Model *m_model;
+  std::vector<Bullet *> m_bullets;
+  u32 m_bullet_count;
+
   physx::PxController *m_control;
 
   glm::vec3 m_cam_front;

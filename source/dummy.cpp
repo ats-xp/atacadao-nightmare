@@ -1,6 +1,7 @@
 #include "dummy.hpp"
 
 #include "player.hpp"
+#include "bullet.hpp"
 
 DummyObject::DummyObject(const char *texture, PhysicsManager &mgr) {
   m_sprite = new Billboard(texture);

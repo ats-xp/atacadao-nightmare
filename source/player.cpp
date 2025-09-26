@@ -1,18 +1,21 @@
 #include "player.hpp"
+#include "bullet.hpp"
+
+#include <SDL2/SDL.h>
+
+#include "physx_utils.hpp"
 
 #include "shape.glsl.h"
 
-#include "input.hpp"
-#include "physx_utils.hpp"
+constexpr int bullet_cooldown = 20;
 
 Player::Player(const glm::vec3 &pos) {
-  // Transform trans;
-  // trans.position = pos;
-  // trans.scale = glm::vec3(32 / 1.8f);
+  m_bullets.reserve(16);
+  m_bullet_count = bullet_cooldown;
 
   m_pos = pos;
   m_vel = physx::PxVec3(0.0f);
-  m_speed = 240.0f;
+  m_speed = 320.0f;
 }
 
 Player::~Player() {
@@ -23,18 +26,33 @@ Player::~Player() {
 }
 
 void Player::update(f32 dt) {
+  const u8 *keys = SDL_GetKeyboardState(nullptr);
   glm::vec3 input(0.0f);
 
-  if (inp.up) {
-    input += m_cam_front;
-  } else if (inp.down) {
-    input -= m_cam_front;
+  if (keys[SDL_SCANCODE_Z] && m_bullet_count-- <= 0) {
+    glm::vec3 pos = m_pos;
+    pos.z += m_cam_front.z * 8.0f;
+    glm::vec3 vel(m_cam_front);
+    vel *= 15.0f;
+    m_bullets.push_back(new Bullet(pos, vel));
+
+    m_bullet_count = bullet_cooldown;
   }
 
-  if (inp.left) {
-    input -= m_cam_right;
-  } else if (inp.right) {
-    input += m_cam_right;
+  if (keys[SDL_SCANCODE_W]) {
+    input.x += m_cam_front.x;
+    input.z += m_cam_front.z;
+  } else if (keys[SDL_SCANCODE_S]) {
+    input.x -= m_cam_front.x;
+    input.z -= m_cam_front.z;
+  }
+
+  if (keys[SDL_SCANCODE_A]) {
+    input.x -= m_cam_right.x;
+    input.z -= m_cam_right.z;
+  } else if (keys[SDL_SCANCODE_D]) {
+    input.x += m_cam_right.x;
+    input.z += m_cam_right.z;
   }
 
   if (glm::length(input) > 0.0f) {
@@ -50,7 +68,7 @@ void Player::update(f32 dt) {
   if (!ground)
     PhysicsGameObject::updateGravity(dt, m_vel);
 
-  if (inp.jump && ground) {
+  if (keys[SDL_SCANCODE_SPACE] && ground) {
     m_vel.y = 320.0f;
     ground = false;
   }
@@ -60,14 +78,26 @@ void Player::update(f32 dt) {
   // Transform trans;
   // trans.position = m_pos;
 
-  // m_model->setTransformitions(trans);
+  for (size_t i = 0; i < m_bullets.size(); i++) {
+    Bullet *b = m_bullets.at(i);
+    b->update(dt);
+
+    if (b->checkDestruction(*this)) {
+      delete b;
+      m_bullets.erase(m_bullets.begin() + i);
+      // LogError("morreu");
+    }
+  }
 }
 
 void Player::draw(Camera &cam) {
-  // m_model->draw(cam);
   cam.setPosition(m_pos);
   m_cam_front = cam.getFront();
   m_cam_right = cam.getRight();
+
+  for (Bullet *b : m_bullets) {
+    b->draw(cam);
+  }
 }
 
 void Player::drawDebug(Camera &cam) {
